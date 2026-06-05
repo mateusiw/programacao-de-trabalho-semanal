@@ -404,10 +404,10 @@
             "Monica Batista",
             "Lucas Silva",
             "Patrick Araujo",
-            "Kauan Xavier",
-            "Emanuel Cardoso",
             "Dionísio Pereira",
             "Pedro Lucas",
+            "Emanuel Cardoso,"
+            "Kauan Xavier",
             "Julio Cantillo",
             "Felipe Bandeira"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -1068,6 +1068,9 @@
                         const tempoUnitEl = block.querySelector('.task-tempo-unit');
                         const combustivelEl = block.querySelector('.task-combustivel');
                         const operadorCustomEl = block.querySelector('.task-operador-custom');
+                        const collaboratorInputEl = block.querySelector('.task-colaborador-input');
+                        const collaboratorCustomInputEl = block.querySelector('.task-colaborador-custom');
+                        const collaboratorCustomWrapperEl = block.querySelector('.task-colaborador-custom-wrapper');
                         const selectedCollaborators = isColaboradores ? getSelectedCollaborators(block) : [];
                         tasks.push({
                             solicitante: block.querySelector('.task-solicitante').value,
@@ -1075,6 +1078,9 @@
                             operador: isColaboradores ? selectedCollaborators : block.querySelector('.task-operador').value,
                             operadorCustom: isColaboradores ? '' : (operadorCustomEl ? operadorCustomEl.value : ''),
                             blocos: block.querySelector('.task-blocos').value,
+                            collaboratorSearch: isColaboradores && collaboratorInputEl ? collaboratorInputEl.value : '',
+                            collaboratorCustom: isColaboradores && collaboratorCustomInputEl ? collaboratorCustomInputEl.value : '',
+                            collaboratorCustomVisible: isColaboradores && collaboratorCustomWrapperEl ? !collaboratorCustomWrapperEl.classList.contains('hidden') : false,
                             tempo: isColaboradores || !tempoEl ? '' : tempoEl.value,
                             tempoUnit: isColaboradores || !tempoUnitEl ? '' : tempoUnitEl.value,
                             combustivel: isColaboradores || !combustivelEl ? '' : combustivelEl.value,
@@ -1260,6 +1266,9 @@
                     : []
             );
             const collaboratorCountText = getCollaboratorCountLabel(selectedCollaborators.length);
+            const collaboratorSearchVal = taskData ? (taskData.collaboratorSearch || '') : '';
+            const collaboratorCustomVal = taskData ? (taskData.collaboratorCustom || '') : '';
+            const showCollaboratorCustom = taskData ? Boolean(taskData.collaboratorCustomVisible) : false;
             
             const solVal = taskData ? taskData.solicitante : '';
             const solCustomVal = taskData ? taskData.solicitanteCustom : '';
@@ -1308,6 +1317,7 @@
                                             type="text"
                                             class="task-colaborador-input w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
                                             placeholder="Pesquisar colaborador..."
+                                            value="${escapeHtml(collaboratorSearchVal)}"
                                             oninput="handleCollaboratorInput('${taskId}')"
                                             onfocus="handleCollaboratorInput('${taskId}')"
                                             onkeydown="handleCollaboratorInputKeydown(event, '${taskId}')"
@@ -1316,12 +1326,13 @@
                                         <div class="task-colaborador-dropdown hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl" onclick="if (event.target === this) hideCollaboratorDropdown('${taskId}')">
                                         </div>
                                     </div>
-                                    <div class="task-colaborador-custom-wrapper hidden space-y-2">
+                                    <div class="task-colaborador-custom-wrapper ${showCollaboratorCustom ? '' : 'hidden'} space-y-2">
                                         <div class="flex gap-2">
                                             <input
                                                 type="text"
                                                 class="task-colaborador-custom w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
                                                 placeholder="Digite o nome..."
+                                                value="${escapeHtml(collaboratorCustomVal)}"
                                                 onkeydown="handleCustomCollaboratorKeydown(event, '${taskId}')"
                                                 oninput="updatePreview()"
                                             >
