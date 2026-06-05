@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Programação de Trator SPG</title>
+    <title>Programação Semanal SPG</title>
     
     <!-- Ícones e Manifest -->
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/512/tractor.png">
@@ -35,7 +35,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html-to-image/dist/html-to-image.js"></script>
     
     <style>
         body { 
@@ -59,6 +59,57 @@
         .toggle-checkbox:checked + .toggle-label {
             background-color: #f59e0b;
         }
+
+        #export-wrapper.export-mobile {
+            width: 412px !important;
+            min-width: 412px !important;
+            max-width: 412px !important;
+            padding: 12px !important;
+            gap: 12px !important;
+            overflow: hidden !important;
+        }
+        #export-wrapper.export-mobile .export-card-header {
+            padding: 16px !important;
+        }
+        #export-wrapper.export-mobile .export-card-footer {
+            padding: 12px !important;
+        }
+        #export-wrapper.export-mobile .export-logo {
+            width: 44px !important;
+            height: 44px !important;
+        }
+        #export-wrapper.export-mobile .export-title {
+            font-size: 14px !important;
+            line-height: 1.15 !important;
+        }
+        #export-wrapper.export-mobile .export-subtitle {
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+        }
+        #export-wrapper.export-mobile #export-preview-card {
+            overflow: visible !important;
+        }
+        #export-wrapper.export-mobile #export-preview-table {
+            width: 100% !important;
+            min-width: 0 !important;
+            table-layout: fixed !important;
+        }
+        #export-wrapper.export-mobile #export-preview-table th,
+        #export-wrapper.export-mobile #export-preview-table td {
+            padding: 8px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+            hyphens: auto !important;
+        }
+        #export-wrapper.export-mobile #export-preview-table thead th {
+            font-size: 9px !important;
+            letter-spacing: 0.12em !important;
+        }
+        #export-wrapper.export-mobile #export-preview-table tbody td {
+            font-size: 10px !important;
+            line-height: 1.35 !important;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-20 select-none">
@@ -71,7 +122,7 @@
             </div>
             <div>
                 <h1 class="text-sm font-bold text-slate-800 leading-tight">SPG SEDE</h1>
-                <p class="text-[10px] text-brand-600 font-bold uppercase tracking-wide">Programação de Trator</p>
+                <p class="text-[10px] text-brand-600 font-bold uppercase tracking-wide">Programação Semanal</p>
             </div>
         </div>
         <div class="flex gap-2">
@@ -90,7 +141,7 @@
     <div class="container mx-auto p-4 flex flex-col lg:flex-row gap-8 mt-4">
         
         <!-- COLUNA DA ESQUERDA: FORMULÁRIO -->
-        <div class="w-full lg:w-1/2 space-y-4">
+        <div class="w-full lg:w-[42%] space-y-4">
 
             <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/80">
                 <h2 class="text-lg font-black text-slate-800 flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
@@ -111,9 +162,10 @@
                             <input type="number" id="weekNumber" oninput="updateDayLabels(); updatePreview()" placeholder="Ex: 20" class="hidden mt-2 w-full p-3.5 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 transition-all shadow-sm">
                         </div>
                         <div>
-                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Veículo Selecionado</label>
-                            <select id="localSelect" required onchange="updatePreview()" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 transition-all shadow-sm cursor-pointer">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Tipo de Programação</label>
+                            <select id="localSelect" required onchange="handleProgramacaoTypeChange()" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 transition-all shadow-sm cursor-pointer">
                                 <option value="Trator">Trator</option>
+                                <option value="Colaboradores">Colaboradores</option>
                             </select>
                         </div>
                     </div>
@@ -134,19 +186,19 @@
         </div>
 
         <!-- COLUNA DA DIREITA: PREVIEW DO RELATÓRIO (FORMATO BIOMETRIA) -->
-        <div class="w-full lg:w-1/2 flex flex-col bg-slate-200/50 p-3 sm:p-4 rounded-3xl border border-slate-300/50 h-max overflow-x-auto">
+        <div class="w-full lg:w-[58%] flex flex-col bg-slate-200/50 p-3 sm:p-4 rounded-3xl border border-slate-300/50 h-max overflow-x-auto min-w-0">
             
             <!-- Wrapper para Exportação (Fundo Cinza Claro #f0f2f5) -->
-            <div id="export-wrapper" class="w-full mx-auto p-4 sm:p-6 bg-[#f0f2f5] rounded-3xl flex flex-col gap-4">
+            <div id="export-wrapper" class="w-full mx-auto p-4 sm:p-6 bg-[#f0f2f5] rounded-3xl flex flex-col gap-4 min-w-0">
                 
                 <!-- CABEÇALHO DO RELATÓRIO (Card Branco) -->
-                <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col gap-5 shrink-0">
+                <div class="export-card-header w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col gap-5 shrink-0">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-5">
                         <div class="flex items-center gap-4">
-                            <img src="https://i.imgur.com/xSmARfS.png" alt="Logo SPG" crossorigin="anonymous" class="w-16 h-16 object-contain">
+                            <img src="https://i.imgur.com/xSmARfS.png" alt="Logo SPG" crossorigin="anonymous" class="export-logo w-16 h-16 object-contain">
                             <div>
-                                <h1 class="font-black text-[16px] sm:text-[18px] text-slate-800 uppercase tracking-widest leading-tight">Programação de Trabalho</h1>
-                                <h2 class="text-[13px] font-bold text-brand-600 mt-1 uppercase tracking-wide" id="previewHeaderSub">Trator • Semana --</h2>
+                                <h1 class="export-title font-black text-[16px] sm:text-[18px] text-slate-800 uppercase tracking-widest leading-tight">Programação de Trabalho</h1>
+                                <h2 class="export-subtitle text-[13px] font-bold text-brand-600 mt-1 uppercase tracking-wide" id="previewHeaderSub">Trator • Semana --</h2>
                             </div>
                         </div>
                     </div>
@@ -156,7 +208,7 @@
                             <p id="previewProgramador" class="text-[14px] font-bold text-slate-800 uppercase">--</p>
                         </div>
                         <div class="text-right">
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Operador</h3>
+                            <h3 id="responsavelLabelHeader" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Operador</h3>
                             <p id="previewOperador" class="text-[14px] font-bold text-slate-800 uppercase">--</p>
                         </div>
                     </div>
@@ -170,7 +222,7 @@
                 </div>
 
                 <!-- RODAPÉ DA IMAGEM (Card Branco) -->
-                <div class="w-full bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex justify-center items-center shrink-0">
+                <div class="export-card-footer w-full bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex justify-center items-center shrink-0">
                     <span>SPG SEDE</span>
                 </div>
             </div>
@@ -184,7 +236,7 @@
                 <i data-lucide="send" class="h-8 w-8 text-brand-600"></i>
             </div>
             <h3 class="text-xl font-black text-slate-800 text-center">Gerar Relatório?</h3>
-            <p class="text-sm text-slate-500 mt-3 text-center leading-relaxed font-medium">
+            <p id="confirmModalText" class="text-sm text-slate-500 mt-3 text-center leading-relaxed font-medium">
                 A programação da semana será transformada em um documento e texto formatado para envio.<br><br>
             </p>
             <div class="grid grid-cols-2 gap-3 mt-6">
@@ -251,7 +303,7 @@
     </div>
 
     <script>
-        const dbOperacoes = [
+        const dbOperacoesTrator = [
             "Levantar canteiros",
             "Transporte de material",
             "Roçagem",
@@ -262,6 +314,30 @@
             "Gradeação",
             "Adubação",
             "Pulverização"
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        const dbOperacoesColaboradores = [
+            "Plantio de Brócolis",
+            "Plantio de Mudas",
+            "Plantio de Capim",
+            "Instalação de Microaspersores",
+            "Retirada de Microaspersores",
+            "Capina Manual",
+            "Limpeza de Mato com Roçadeira",
+            "Adubação",
+            "Espalhar Baganas",
+            "Espalhar Esterco",
+            "Instalação de Torneiras",
+            "Instalação de Venturi",
+            "Reparo de Canos Quebrados",
+            "Reparo de Mangueiras",
+            "Reparo de Microaspersores",
+            "Reparo Geral",
+            "Irrigação",
+            "Limpeza de Área",
+            "Preparo de Solo",
+            "Limpeza de Canteiros",
+            "Cobertura de Solo"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const dbSolicitantes = [
@@ -278,10 +354,297 @@
             "Mecânico do Trator"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
+        const dbColaboradores = [
+            "Paulo Selbach",
+            "Paula Selbach",
+            "Gabriela Selbach",
+            "Assis Paulo",
+            "Alesandra Leitão",
+            "Fagner Elias",
+            "Guilherme Ramos",
+            "Cláudio Soares",
+            "Mateus Paulo",
+            "Lucas Soares",
+            "Hugo Melo",
+            "Gretha Fernandes",
+            "Paulo Guilherme",
+            "Marcelo Oliveira",
+            "Lucas Ribeiro",
+            "Antonio Dheimison",
+            "Lucas Rodrigues",
+            "Antonio Rodrigues",
+            "Henrique Soares",
+            "Erisvaldo Camelo",
+            "Silvio de Paula",
+            "Regilene Alves",
+            "João Victor",
+            "Ana Paula",
+            "Idaiany Melo",
+            "Thaynara Rodrigues",
+            "Clébio Ferreira",
+            "Tatiany Rocha",
+            "Rodrigo Lima",
+            "Michel Rodrigues",
+            "Leandro Altino Ferreira",
+            "Marcos Feitosa",
+            "Francisco da Silva",
+            "Gabriel Cardoso",
+            "Lucas Inacio",
+            "Bruna Pereira",
+            "Glaylson Lima",
+            "Karine Marques",
+            "Daiane Ribeiro",
+            "Helio Freitas",
+            "Rafael Ferreira",
+            "Alexandro Ribeiro",
+            "Airton Cordeiro",
+            "Fabio Texeira",
+            "Cleilson Mesquita",
+            "Rafael Saraiva",
+            "Manoel Messias",
+            "Marcos de Lima",
+            "Eduardo Souza",
+            "Isaac de Oliveira",
+            "Antonio Adriano",
+            "Ribamar Chaves",
+            "Nardelio Gladino",
+            "João Martins",
+            "Antonio Alan",
+            "Carlos Oliveira",
+            "Jonas de Sousa",
+            "Janiel Lopes",
+            "Jucivan Xavier",
+            "João Batista",
+            "Reginaldo Cesar",
+            "Mateus Lopes",
+            "Nara Rubia",
+            "Furtado Leite",
+            "Paula Roberta",
+            "Maria Ramalho",
+            "Fabiana Marques",
+            "Monica Batista",
+            "Lucas Silva",
+            "Patrick Araujo",
+            "Dionísio Pereira",
+            "Pedro Lucas",
+            "Julio Cantillo",
+            "Felipe Bandeira"
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
         const daysOfWeek = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
         const currentYear = new Date().getFullYear();
         
         let currentWeekNumber = 1;
+        let currentProgramacaoType = 'Trator';
+
+        const programacaoConfig = {
+            Trator: {
+                documentTitle: 'Programação do Trator',
+                filePrefix: 'Programacao_Trator',
+                storageKey: 'programacaoTratorSPG_data'
+            },
+            Colaboradores: {
+                documentTitle: 'Programação dos Colaboradores',
+                filePrefix: 'Programacao_Colaboradores',
+                storageKey: 'programacaoColaboradoresSPG_data'
+            }
+        };
+
+        function getSelectedProgramacaoType() {
+            return document.getElementById('localSelect').value;
+        }
+
+        function getProgramacaoConfig(type = getSelectedProgramacaoType()) {
+            return programacaoConfig[type] || programacaoConfig.Trator;
+        }
+
+        function getStorageKey(type = getSelectedProgramacaoType()) {
+            return getProgramacaoConfig(type).storageKey;
+        }
+
+        function getProgramacaoDocumentTitle(type = getSelectedProgramacaoType()) {
+            return getProgramacaoConfig(type).documentTitle;
+        }
+
+        function getProgramacaoFilePrefix(type = getSelectedProgramacaoType()) {
+            return getProgramacaoConfig(type).filePrefix;
+        }
+
+        function isColaboradoresProgramacao(type = getSelectedProgramacaoType()) {
+            return type === 'Colaboradores';
+        }
+
+        function getResponsavelLabel(type = getSelectedProgramacaoType()) {
+            return isColaboradoresProgramacao(type) ? 'Colaboradores' : 'Operador';
+        }
+
+        function getResponsavelPreviewLabel(type = getSelectedProgramacaoType()) {
+            return isColaboradoresProgramacao(type) ? 'Colaboradores' : 'Operador';
+        }
+
+        function getOperacoesList(type = getSelectedProgramacaoType()) {
+            return isColaboradoresProgramacao(type) ? dbOperacoesColaboradores : dbOperacoesTrator;
+        }
+
+        function normalizeSelectedCollaborators(value) {
+            if (Array.isArray(value)) return value;
+            if (typeof value === 'string' && value.trim()) {
+                return value.split(',').map(item => item.trim()).filter(Boolean);
+            }
+            return [];
+        }
+
+        function getSelectedCollaborators(block) {
+            return Array.from(block.querySelectorAll('.task-colaborador-chip')).map(chip => chip.dataset.name).filter(Boolean);
+        }
+
+        function getCollaboratorCountLabel(count) {
+            return `${count} colaborador${count === 1 ? '' : 'es'} selecionado${count === 1 ? '' : 's'}`;
+        }
+
+        function updateCollaboratorCounter(taskId) {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const counter = taskEl.querySelector('.task-colaborador-count');
+            if (!counter) return;
+            const count = getSelectedCollaborators(taskEl).length;
+            counter.innerText = getCollaboratorCountLabel(count);
+            counter.dataset.count = String(count);
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function createCollaboratorChip(taskId, name, silent = false) {
+            const container = document.querySelector(`#${taskId} .task-colaboradores-chips`);
+            if (!container) return false;
+            const exists = Array.from(container.querySelectorAll('.task-colaborador-chip')).some(chip => chip.dataset.name === name);
+            if (exists) return false;
+
+            const chip = document.createElement('span');
+            chip.className = 'task-colaborador-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200';
+            chip.dataset.name = name;
+            chip.innerHTML = `
+                <span>${name}</span>
+                <button type="button" class="w-4 h-4 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-[10px] leading-none hover:bg-brand-300" onclick="removeCollaboratorChip(this)">×</button>
+            `;
+            container.appendChild(chip);
+            updateCollaboratorCounter(taskId);
+            if (!silent) updatePreview();
+            return true;
+        }
+
+        function removeCollaboratorChip(button) {
+            const chip = button.closest('.task-colaborador-chip');
+            if (chip) {
+                const taskBlock = chip.closest('.task-block');
+                chip.remove();
+                if (taskBlock) updateCollaboratorCounter(taskBlock.id);
+                updatePreview();
+            }
+        }
+
+        function getCollaboratorMatches(query, taskId) {
+            const normalizedQuery = (query || '').trim().toLowerCase();
+            const selected = new Set(getSelectedCollaborators(document.getElementById(taskId)));
+            return dbColaboradores.filter(name => {
+                if (selected.has(name)) return false;
+                if (!normalizedQuery) return true;
+                return name.toLowerCase().includes(normalizedQuery);
+            });
+        }
+
+        function renderCollaboratorDropdown(taskId, query = '') {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const input = taskEl.querySelector('.task-colaborador-input');
+            const dropdown = taskEl.querySelector('.task-colaborador-dropdown');
+            if (!input || !dropdown) return;
+
+            const matches = getCollaboratorMatches(query, taskId);
+            if (!matches.length) {
+                dropdown.innerHTML = '<div class="px-4 py-3 text-xs text-slate-400">Nenhum colaborador encontrado.</div>';
+                dropdown.classList.remove('hidden');
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(name => `
+                <button type="button" data-name="${escapeHtml(name)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-brand-50 transition-colors" onclick="selectCollaboratorOption(this, '${taskId}')">
+                    <span>${escapeHtml(name)}</span>
+                    <i data-lucide="plus" class="w-4 h-4 text-brand-500"></i>
+                </button>
+            `).join('');
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeAllCollaboratorDropdowns() {
+            document.querySelectorAll('.task-colaborador-dropdown').forEach(dropdown => {
+                dropdown.classList.add('hidden');
+            });
+        }
+
+        function hideCollaboratorDropdown(taskId) {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const dropdown = taskEl.querySelector('.task-colaborador-dropdown');
+            if (dropdown) {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function handleCollaboratorInput(taskId) {
+            const input = document.querySelector(`#${taskId} .task-colaborador-input`);
+            if (!input) return;
+            closeAllCollaboratorDropdowns();
+            renderCollaboratorDropdown(taskId, input.value);
+        }
+
+        function selectCollaboratorOption(button, taskId) {
+            const name = button?.dataset?.name;
+            if (!name) return;
+            if (createCollaboratorChip(taskId, name)) {
+                const input = document.querySelector(`#${taskId} .task-colaborador-input`);
+                if (input) {
+                    input.value = '';
+                }
+                hideCollaboratorDropdown(taskId);
+                updateCollaboratorCounter(taskId);
+            }
+        }
+
+        function handleCollaboratorInputKeydown(event, taskId) {
+            const input = document.querySelector(`#${taskId} .task-colaborador-input`);
+            if (!input) return;
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const matches = getCollaboratorMatches(input.value, taskId);
+                if (matches.length > 0) {
+                    createCollaboratorChip(taskId, matches[0]);
+                    input.value = '';
+                    hideCollaboratorDropdown(taskId);
+                }
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                hideCollaboratorDropdown(taskId);
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('.task-colaborador-input') || event.target.closest('.task-colaborador-dropdown')) {
+                return;
+            }
+            closeAllCollaboratorDropdowns();
+        });
 
         // Dicionário de Autocorreção Inteligente para Operações
         const spellCheckDict = {
@@ -303,7 +666,25 @@
             "manutencao": "manutenção",
             "pulverizaçao": "pulverização",
             "pulverisacao": "pulverização",
+            "pulverizacao": "pulverização",
             "adubacao": "adubação",
+            "aspersao": "aspersão",
+            "rocadeira": "roçadeira",
+            "brocolis": "brócolis",
+            "voce": "você",
+            "voces": "vocês",
+            "mecanico": "mecânico",
+            "mecanica": "mecânica",
+            "area": "área",
+            "areas": "áreas",
+            "operacao": "operação",
+            "operacoes": "operações",
+            "instalacao": "instalação",
+            "instalação": "instalação",
+            "estalação": "instalação",
+            "programaçao": "programação",
+            "programacao": "programação",
+            "progração": "programação",
             "gradeaçao": "gradeação",
             "gradeacao": "gradeação",
             "chaci": "chassi",
@@ -333,9 +714,166 @@
             "macaco": ""
         };
 
+        const portugueseSpellcheckDomainWords = [
+            'microaspersor',
+            'microaspersores',
+            'microaspersão',
+            'microaspersões',
+            'venturi',
+            'bagana',
+            'baganas',
+            'roçadeira',
+            'roçadeiras',
+            'brócolis',
+            'calcário',
+            'caçamba',
+            'caçambas',
+            'chassi',
+            'engraxar',
+            'pulverização',
+            'adubação',
+            'roçada',
+            'roçagem',
+            'pressão',
+            'manutenção',
+            'programação',
+            'operação',
+            'operações'
+        ];
+
+        let portugueseSpellChecker = null;
+        let portugueseSpellCheckerPromise = null;
+
+        async function loadPortugueseSpellChecker() {
+            if (portugueseSpellCheckerPromise) return portugueseSpellCheckerPromise;
+
+            portugueseSpellCheckerPromise = Promise.all([
+                import('https://cdn.jsdelivr.net/npm/nspell/+esm'),
+                import('https://cdn.jsdelivr.net/npm/dictionary-pt/+esm')
+            ]).then(([nspellModule, dictionaryModule]) => {
+                const nspell = nspellModule.default || nspellModule;
+                const dictionaryPt = dictionaryModule.default || dictionaryModule;
+                const spell = nspell(dictionaryPt);
+                portugueseSpellcheckDomainWords.forEach(word => spell.add(word));
+                portugueseSpellChecker = spell;
+                return spell;
+            }).catch(err => {
+                console.warn('Não foi possível carregar o corretor de português:', err);
+                portugueseSpellChecker = null;
+                return null;
+            });
+
+            return portugueseSpellCheckerPromise;
+        }
+
+        const portugueseAccentMap = {
+            "voce": "você",
+            "voces": "vocês",
+            "mecanico": "mecânico",
+            "mecanica": "mecânica",
+            "mecanicos": "mecânicos",
+            "mecanicas": "mecânicas",
+            "area": "área",
+            "areas": "áreas",
+            "operacao": "operação",
+            "operacoes": "operações",
+            "instalacao": "instalação",
+            "instalacoes": "instalações",
+            "programacao": "programação",
+            "programacoes": "programações",
+            "manutencao": "manutenção",
+            "manutencoes": "manutenções",
+            "pulverizacao": "pulverização",
+            "pulverizacoes": "pulverizações",
+            "adubacao": "adubação",
+            "adubacoes": "adubações",
+            "aspersao": "aspersão",
+            "aspersoes": "aspersões",
+            "rocadeira": "roçadeira",
+            "rocadeiras": "roçadeiras",
+            "brocolis": "brócolis",
+            "nao": "não",
+            "ja": "já",
+            "tambem": "também",
+            "porem": "porém",
+            "ate": "até",
+            "alem": "além",
+            "estao": "estão",
+            "sao": "são",
+            "sera": "será",
+            "podera": "poderá",
+            "tera": "terá"
+        };
+
+        function preserveWordCase(source, target) {
+            if (!source) return target;
+            if (source === source.toUpperCase()) return target.toUpperCase();
+            if (source[0] === source[0].toUpperCase()) {
+                return target.charAt(0).toUpperCase() + target.slice(1);
+            }
+            return target;
+        }
+
+        function restorePortugueseAccents(text) {
+            return text.replace(/\b[A-Za-zÀ-ÿ]+\b/g, match => {
+                const lower = match.toLowerCase();
+                if (portugueseAccentMap[lower]) {
+                    return preserveWordCase(match, portugueseAccentMap[lower]);
+                }
+
+                if (lower.endsWith('acoes')) {
+                    return preserveWordCase(match, lower.slice(0, -5) + 'ações');
+                }
+                if (lower.endsWith('acao')) {
+                    return preserveWordCase(match, lower.slice(0, -4) + 'ação');
+                }
+                if (lower.endsWith('icoes')) {
+                    return preserveWordCase(match, lower.slice(0, -5) + 'ições');
+                }
+                if (lower.endsWith('icao')) {
+                    return preserveWordCase(match, lower.slice(0, -4) + 'ição');
+                }
+                if (lower.endsWith('oes')) {
+                    return preserveWordCase(match, lower.slice(0, -3) + 'ões');
+                }
+                if (lower.endsWith('ao') && lower.length > 3) {
+                    return preserveWordCase(match, lower.slice(0, -2) + 'ão');
+                }
+
+                return match;
+            });
+        }
+
+        function correctWithPortugueseSpellChecker(text) {
+            if (!portugueseSpellChecker) return text;
+
+            return text.replace(/\b[A-Za-zÀ-ÿ]+\b/g, match => {
+                const lower = match.toLowerCase();
+
+                if (match === match.toUpperCase() && match.length > 2) {
+                    return match;
+                }
+
+                if (portugueseSpellcheckDomainWords.includes(lower)) {
+                    return match;
+                }
+
+                if (portugueseSpellChecker.correct(lower)) {
+                    return match;
+                }
+
+                const suggestions = portugueseSpellChecker.suggest(lower);
+                if (!suggestions || !suggestions.length) {
+                    return match;
+                }
+
+                return preserveWordCase(match, suggestions[0]);
+            });
+        }
+
         function autoCorrectText(textarea) {
             let originalText = textarea.value;
-            let newText = originalText;
+            let newText = restorePortugueseAccents(originalText);
             
             // Procura e substitui palavras erradas mantendo letras maiúsculas caso existam
             Object.keys(spellCheckDict).forEach(wrong => {
@@ -349,6 +887,8 @@
                     return right;
                 });
             });
+
+            newText = correctWithPortugueseSpellChecker(newText);
 
             // Atualiza o texto se houve correção e mantém a posição do cursor
             if (originalText !== newText) {
@@ -375,16 +915,18 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            loadPortugueseSpellChecker();
             lucide.createIcons();
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
             
             document.getElementById('weekNumber').value = currentWeekNumber;
+            currentProgramacaoType = getSelectedProgramacaoType();
             
             renderDaysForm();
             
             // Carregar dados salvos do localStorage
-            loadFromLocalStorage();
+            loadFromLocalStorage(currentProgramacaoType);
             
             updateDayLabels();
             updatePreview();
@@ -411,12 +953,58 @@
                 input.classList.add('hidden');
             }
         }
+
+        function resetFormState(type = getSelectedProgramacaoType()) {
+            const form = document.getElementById('planningForm');
+            form.reset();
+
+            document.getElementById('weekModeSelect').value = 'auto';
+            document.getElementById('weekNumber').value = currentWeekNumber;
+            document.getElementById('localSelect').value = type;
+            toggleManualWeek();
+
+            daysOfWeek.forEach(day => {
+                const dayId = day.toLowerCase().split('-')[0];
+                const checkbox = document.getElementById(`check_${dayId}`);
+                const fieldsContainer = document.getElementById(`fields_${dayId}`);
+                const card = document.getElementById(`card_${dayId}`);
+                const tasksContainer = document.getElementById(`tasks_container_${dayId}`);
+
+                if (checkbox) {
+                    checkbox.checked = false;
+                    checkbox.classList.remove('bg-white');
+                    checkbox.classList.add('bg-slate-200');
+                }
+                if (fieldsContainer) fieldsContainer.classList.add('hidden');
+                if (card) {
+                    card.classList.add('border-slate-200', 'hover:border-slate-300');
+                    card.classList.remove('border-brand-500', 'ring-1', 'ring-brand-500/20', 'shadow-md');
+                }
+                if (tasksContainer) tasksContainer.innerHTML = '';
+            });
+        }
+
+        function handleProgramacaoTypeChange() {
+            const newType = getSelectedProgramacaoType();
+            if (newType === currentProgramacaoType) {
+                updatePreview();
+                return;
+            }
+
+            saveToLocalStorage(currentProgramacaoType);
+            currentProgramacaoType = newType;
+            resetFormState(newType);
+            loadFromLocalStorage(newType);
+            updateDayLabels();
+            updatePreview();
+        }
         
-        function saveToLocalStorage() {
+        function saveToLocalStorage(type = currentProgramacaoType) {
+            const isColaboradores = isColaboradoresProgramacao(type);
             const data = {
                 weekMode: document.getElementById('weekModeSelect').value,
                 weekNumber: document.getElementById('weekNumber').value,
-                local: document.getElementById('localSelect').value,
+                local: type,
                 days: {}
             };
 
@@ -428,15 +1016,20 @@
                     const taskBlocks = document.querySelectorAll(`#tasks_container_${dayId} .task-block`);
                     
                     taskBlocks.forEach(block => {
+                        const tempoEl = block.querySelector('.task-tempo');
+                        const tempoUnitEl = block.querySelector('.task-tempo-unit');
+                        const combustivelEl = block.querySelector('.task-combustivel');
+                        const operadorCustomEl = block.querySelector('.task-operador-custom');
+                        const selectedCollaborators = isColaboradores ? getSelectedCollaborators(block) : [];
                         tasks.push({
                             solicitante: block.querySelector('.task-solicitante').value,
                             solicitanteCustom: block.querySelector('.task-solicitante-custom').value,
-                            operador: block.querySelector('.task-operador').value,
-                            operadorCustom: block.querySelector('.task-operador-custom').value,
+                            operador: isColaboradores ? selectedCollaborators : block.querySelector('.task-operador').value,
+                            operadorCustom: isColaboradores ? '' : (operadorCustomEl ? operadorCustomEl.value : ''),
                             blocos: block.querySelector('.task-blocos').value,
-                            tempo: block.querySelector('.task-tempo').value,
-                            tempoUnit: block.querySelector('.task-tempo-unit').value,
-                            combustivel: block.querySelector('.task-combustivel').value,
+                            tempo: isColaboradores || !tempoEl ? '' : tempoEl.value,
+                            tempoUnit: isColaboradores || !tempoUnitEl ? '' : tempoUnitEl.value,
+                            combustivel: isColaboradores || !combustivelEl ? '' : combustivelEl.value,
                             operacoes: block.querySelector('.task-operacoes').value,
                         });
                     });
@@ -444,11 +1037,11 @@
                 }
             });
 
-            localStorage.setItem('programacaoTratorSPG_data', JSON.stringify(data));
+            localStorage.setItem(getStorageKey(type), JSON.stringify(data));
         }
 
-        function loadFromLocalStorage() {
-            const savedData = localStorage.getItem('programacaoTratorSPG_data');
+        function loadFromLocalStorage(type = currentProgramacaoType) {
+            const savedData = localStorage.getItem(getStorageKey(type));
             if (savedData) {
                 try {
                     const data = JSON.parse(savedData);
@@ -504,27 +1097,13 @@
         }
 
         function executeClearData() {
-            localStorage.removeItem('programacaoTratorSPG_data');
-            document.getElementById('planningForm').reset();
-            
-            daysOfWeek.forEach(day => {
-                const dayId = day.toLowerCase().split('-')[0];
-                const checkbox = document.getElementById(`check_${dayId}`);
-                const tasksContainer = document.getElementById(`tasks_container_${dayId}`);
-                
-                if (tasksContainer) tasksContainer.innerHTML = '';
-                
-                if (checkbox && checkbox.checked) {
-                    checkbox.checked = false;
-                    toggleDayFields(dayId);
-                }
-            });
+            localStorage.removeItem(getStorageKey('Trator'));
+            localStorage.removeItem(getStorageKey('Colaboradores'));
 
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
+            resetFormState(currentProgramacaoType);
             document.getElementById('weekNumber').value = currentWeekNumber;
-            document.getElementById('weekModeSelect').value = 'auto';
-            toggleManualWeek();
 
             updateDayLabels();
             updatePreview();
@@ -577,8 +1156,9 @@
         }
 
         function generateOperacoesOptions() {
+            const operacoesList = getOperacoesList();
             let optionsHtml = '<option value="">+ Adicionar operação...</option>';
-            dbOperacoes.forEach(op => {
+            operacoesList.forEach(op => {
                 optionsHtml += `<option value="${op}">${op}</option>`;
             });
             return optionsHtml;
@@ -624,15 +1204,20 @@
             const taskCount = container.children.length;
             const taskId = `${dayId}_task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             const options = generateOperacoesOptions();
+            const isColaboradores = isColaboradoresProgramacao();
+            const responsavelLabel = getResponsavelLabel();
+            const selectedCollaborators = normalizeSelectedCollaborators(
+                taskData
+                    ? (Array.isArray(taskData.operador) ? taskData.operador : (taskData.colaboradores || taskData.operador || ''))
+                    : []
+            );
+            const collaboratorCountText = getCollaboratorCountLabel(selectedCollaborators.length);
             
             const solVal = taskData ? taskData.solicitante : '';
             const solCustomVal = taskData ? taskData.solicitanteCustom : '';
             const opVal = taskData ? taskData.operador : '';
             const opCustomVal = taskData ? taskData.operadorCustom : '';
             const blocosVal = taskData ? taskData.blocos : '';
-            const tempoVal = taskData ? taskData.tempo : '';
-            const tempoUnitVal = taskData && taskData.tempoUnit ? taskData.tempoUnit : 'H';
-            const combustivelVal = taskData ? taskData.combustivel : '';
             const operacoesVal = taskData ? taskData.operacoes : '';
 
             let solicitantesHtml = '<option value="">Selecione...</option>';
@@ -665,11 +1250,42 @@
                             <input type="text" class="task-solicitante-custom ${solVal === 'Outro' ? '' : 'hidden'} mt-2 w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Nome..." value="${solCustomVal}" oninput="updatePreview()">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Operador</label>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">${responsavelLabel}</label>
+                            ${isColaboradores ? `
+                                <div class="space-y-2">
+                                    <div class="flex items-end justify-between gap-3">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Colaboradores</span>
+                                        <span class="task-colaborador-count text-[10px] font-black text-brand-600 uppercase tracking-widest" data-count="${selectedCollaborators.length}">${collaboratorCountText}</span>
+                                    </div>
+                                    <div class="relative">
+                                        <input
+                                            type="text"
+                                            class="task-colaborador-input w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
+                                            placeholder="Pesquisar colaborador..."
+                                            oninput="handleCollaboratorInput('${taskId}')"
+                                            onfocus="handleCollaboratorInput('${taskId}')"
+                                            onkeydown="handleCollaboratorInputKeydown(event, '${taskId}')"
+                                            autocomplete="off"
+                                        >
+                                        <div class="task-colaborador-dropdown hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl" onclick="if (event.target === this) hideCollaboratorDropdown('${taskId}')">
+                                        </div>
+                                    </div>
+                                    <div class="task-colaboradores-chips flex flex-wrap gap-2 min-h-10 p-2 rounded-xl border border-slate-200 bg-white">
+                                        ${selectedCollaborators.map(nome => `
+                                            <span class="task-colaborador-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200" data-name="${nome}">
+                                                <span>${nome}</span>
+                                                <button type="button" class="w-4 h-4 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-[10px] leading-none hover:bg-brand-300" onclick="removeCollaboratorChip(this)">×</button>
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 font-medium">Digite o nome e clique na lista suspensa para adicionar.</p>
+                                </div>
+                            ` : `
                             <select class="task-operador w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleCustomInput(this); updatePreview()">
                                 ${operadoresHtml}
                             </select>
                             <input type="text" class="task-operador-custom ${opVal === 'Outro' ? '' : 'hidden'} mt-2 w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Nome..." value="${opCustomVal}" oninput="autoCorrectOperator(this); updatePreview()">
+                            `}
                         </div>
                     </div>
 
@@ -678,26 +1294,28 @@
                         <input type="text" class="task-blocos w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 5" value="${blocosVal}" oninput="updatePreview()">
                     </div>
 
+                    ${isColaboradores ? '' : `
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tempo Estimado</label>
                             <div class="flex">
-                                <input type="number" step="0.1" class="task-tempo ${tempoUnitVal === 'Indeterminado' ? 'hidden' : ''} w-full p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 3.4" value="${tempoVal}" oninput="updatePreview()">
-                                <select class="task-tempo-unit px-2 border ${tempoUnitVal === 'Indeterminado' ? 'rounded-xl border-l w-full' : 'border-l-0 rounded-r-xl'} border-slate-200 text-sm bg-slate-50 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleTempoInput(this); updatePreview()">
-                                    <option value="H" ${tempoUnitVal === 'H' ? 'selected' : ''}>H</option>
-                                    <option value="min" ${tempoUnitVal === 'min' ? 'selected' : ''}>min</option>
-                                    <option value="Indeterminado" ${tempoUnitVal === 'Indeterminado' ? 'selected' : ''}>Indeterminado</option>
+                                <input type="number" step="0.1" class="task-tempo w-full p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 3.4" value="${taskData ? taskData.tempo || '' : ''}" oninput="updatePreview()">
+                                <select class="task-tempo-unit px-2 border border-l-0 rounded-r-xl border-slate-200 text-sm bg-slate-50 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleTempoInput(this); updatePreview()">
+                                    <option value="H" ${(taskData && taskData.tempoUnit === 'H') ? 'selected' : ''}>H</option>
+                                    <option value="min" ${(taskData && taskData.tempoUnit === 'min') ? 'selected' : ''}>min</option>
+                                    <option value="Indeterminado" ${(taskData && taskData.tempoUnit === 'Indeterminado') ? 'selected' : ''}>Indeterminado</option>
                                 </select>
                             </div>
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Combustível</label>
                             <div class="flex">
-                                <input type="number" step="0.1" class="task-combustivel w-full p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 31" value="${combustivelVal}" oninput="updatePreview()">
+                                <input type="number" step="0.1" class="task-combustivel w-full p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 31" value="${taskData ? taskData.combustivel || '' : ''}" oninput="updatePreview()">
                                 <span class="px-3 py-3 bg-slate-100 border border-l-0 border-slate-200 rounded-r-xl text-slate-500 text-sm font-bold flex items-center">L</span>
                             </div>
                         </div>
                     </div>
+                    `}
 
                     <div>
                         <div class="flex justify-between items-end mb-1.5">
@@ -706,13 +1324,14 @@
                                 ${options}
                             </select>
                         </div>
-                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="Descreva as operações..." oninput="autoCorrectText(this); updatePreview()">${operacoesVal}</textarea>
+                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="Descreva as operações..." spellcheck="true" autocorrect="on" autocapitalize="sentences" lang="pt-BR" oninput="autoCorrectText(this); updatePreview()">${operacoesVal}</textarea>
                     </div>
                 </div>
             `;
             
             container.insertAdjacentHTML('beforeend', taskHtml);
             lucide.createIcons();
+            if (isColaboradores) updateCollaboratorCounter(taskId);
             
             if (!taskData) updatePreview(); 
         }
@@ -799,12 +1418,19 @@
 
         function updatePreview() {
             const weekNumber = getEffectiveWeekNumber();
-            const local = document.getElementById('localSelect').value;
+            const local = getSelectedProgramacaoType();
+            const documentTitle = getProgramacaoDocumentTitle(local);
+            const isColaboradores = isColaboradoresProgramacao(local);
+            const responsavelLabel = getResponsavelLabel(local);
+            const responsavelPreviewLabel = getResponsavelPreviewLabel(local);
             
             document.getElementById('previewHeaderSub').innerText = `${local} • Semana ${weekNumber}`;
+            document.title = `${documentTitle} SPG`;
+            const responsavelLabelHeader = document.getElementById('responsavelLabelHeader');
+            if (responsavelLabelHeader) responsavelLabelHeader.innerText = responsavelLabel;
 
             const previewContainer = document.getElementById('previewContent');
-            let textToShare = `*Programação do Trator - Semana ${weekNumber}*`;
+            let textToShare = `*${documentTitle} - Semana ${weekNumber}*`;
 
             let hasAnyContent = false;
             let tableRows = '';
@@ -826,19 +1452,31 @@
                         taskBlocks.forEach((block, index) => {
                             const solSel = block.querySelector('.task-solicitante').value;
                             const solCust = block.querySelector('.task-solicitante-custom').value.trim();
-                            const opSel = block.querySelector('.task-operador').value;
-                            const opCust = block.querySelector('.task-operador-custom').value.trim();
                             
                             const finalSolicitante = solSel === 'Outro' ? solCust : solSel;
-                            const finalOperador = opSel === 'Outro' ? opCust : opSel;
+                            const finalOperador = isColaboradores
+                                ? (() => {
+                                    const collaborators = getSelectedCollaborators(block);
+                                    const countLabel = collaborators.length ? `(${collaborators.length}) ` : '';
+                                    const collaboratorNames = collaborators.length ? collaborators.join(', ') : '--';
+                                    return `
+                                        <div class="flex flex-col gap-1.5">
+                                            <span class="inline-flex w-fit items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-100 text-brand-700 border border-brand-200 text-[9px] font-black uppercase tracking-[0.2em] leading-none">
+                                                <i data-lucide="users" class="w-3 h-3"></i>
+                                                ${countLabel || ''}Colaboradores
+                                            </span>
+                                            <span class="text-brand-700 font-bold leading-relaxed">${collaboratorNames}</span>
+                                        </div>
+                                    `;
+                                  })()
+                                : (() => {
+                                    const opSel = block.querySelector('.task-operador').value;
+                                    const opCust = block.querySelector('.task-operador-custom').value.trim();
+                                    return opSel === 'Outro' ? opCust : opSel;
+                                  })();
 
                             const blocos = block.querySelector('.task-blocos').value.trim();
-                            const tempo = block.querySelector('.task-tempo').value.trim();
-                            const tempoUnit = block.querySelector('.task-tempo-unit').value;
-                            const combustivel = block.querySelector('.task-combustivel').value.trim();
                             const operacoes = block.querySelector('.task-operacoes').value.trim();
-                            
-                            const finalTempo = tempoUnit === 'Indeterminado' ? 'Indeterminado' : (tempo ? `${tempo} ${tempoUnit}` : '--');
 
                             // Monta as linhas da tabela com os responsáveis inclusos
                             tableRows += `
@@ -847,11 +1485,32 @@
                                     <td class="py-3 px-4 font-black text-slate-700">${blocos || '--'}</td>
                                     <td class="py-3 px-4">
                                         <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sol: <span class="text-brand-700">${finalSolicitante || '--'}</span></span>
-                                        <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Op: <span class="text-brand-700">${finalOperador || '--'}</span></span>
+                                        ${isColaboradores ? `
+                                            <div class="mt-1">
+                                                ${finalOperador}
+                                            </div>
+                                        ` : `
+                                            <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">${responsavelPreviewLabel}: <span class="text-brand-700">${finalOperador || '--'}</span></span>
+                                        `}
                                     </td>
                                     <td class="py-3 px-4 font-medium text-slate-700 leading-relaxed">${operacoes || '--'}</td>
-                                    <td class="py-3 px-4 text-center font-bold text-brand-700 whitespace-nowrap">${finalTempo}</td>
-                                    <td class="py-3 px-4 text-center font-bold text-brand-700 whitespace-nowrap">${combustivel ? combustivel + ' L' : '--'}</td>
+                                    ${isColaboradores ? '' : `
+                                    <td class="py-3 px-4 text-center font-bold text-brand-700 whitespace-nowrap">
+                                        ${(() => {
+                                            const tempoEl = block.querySelector('.task-tempo');
+                                            const tempoUnitEl = block.querySelector('.task-tempo-unit');
+                                            const tempo = tempoEl ? tempoEl.value.trim() : '';
+                                            const tempoUnit = tempoUnitEl ? tempoUnitEl.value : '';
+                                            return tempoUnit === 'Indeterminado' ? 'Indeterminado' : (tempo ? `${tempo} ${tempoUnit}` : '--');
+                                        })()}
+                                    </td>
+                                    <td class="py-3 px-4 text-center font-bold text-brand-700 whitespace-nowrap">
+                                        ${(() => {
+                                            const combustivelEl = block.querySelector('.task-combustivel');
+                                            const combustivel = combustivelEl ? combustivelEl.value.trim() : '';
+                                            return combustivel ? `${combustivel} L` : '--';
+                                        })()}
+                                    </td>`}
                                 </tr>
                             `;
                         });
@@ -863,16 +1522,15 @@
                 previewContainer.innerHTML = `<div class="w-full text-center text-slate-400 text-sm italic py-10 my-auto bg-white rounded-2xl border border-slate-200 shadow-sm">Ative os dias ao lado e preencha a programação para visualizá-la aqui.</div>`;
             } else {
                 previewContainer.innerHTML = `
-                    <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-300 overflow-x-auto">
-                        <table class="w-full min-w-[700px] text-left border-collapse">
+                    <div id="export-preview-card" class="w-full bg-white rounded-2xl shadow-sm border border-slate-300 overflow-x-auto">
+                        <table id="export-preview-table" class="w-full min-w-[700px] text-left border-collapse">
                             <thead>
                                 <tr class="bg-brand-100 text-brand-800 text-[10px] sm:text-[11px] uppercase tracking-widest border-b-2 border-brand-200">
                                     <th class="p-3 sm:p-4 font-black w-[15%]">Dias</th>
                                     <th class="p-3 sm:p-4 font-black w-[10%]">Local</th>
                                     <th class="p-3 sm:p-4 font-black w-[20%]">Responsáveis</th>
                                     <th class="p-3 sm:p-4 font-black w-[30%]">Operações</th>
-                                    <th class="p-3 sm:p-4 font-black text-center w-[15%]">Tempo Est.</th>
-                                    <th class="p-3 sm:p-4 font-black text-center w-[10%]">Combustível</th>
+                                    ${isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[15%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[10%]">Combustível</th>'}
                                 </tr>
                             </thead>
                             <tbody class="text-[13px] sm:text-[14px] text-slate-700">
@@ -886,7 +1544,7 @@
 
             preparedShareData = {
                 shareText: textToShare.trim(),
-                filename: `Programacao_Trator_Semana_${weekNumber}.png`
+                filename: `${getProgramacaoFilePrefix(local)}_Semana_${weekNumber}.png`
             };
 
             saveToLocalStorage();
@@ -898,6 +1556,11 @@
                 form.reportValidity();
                 return;
             }
+            const documentTitle = getProgramacaoDocumentTitle();
+            const confirmModalText = document.getElementById('confirmModalText');
+            if (confirmModalText) {
+                confirmModalText.innerHTML = `A ${documentTitle.toLowerCase()} será transformada em um documento e texto formatado para envio.<br><br>`;
+            }
             updatePreview();
             document.getElementById('confirmModal').classList.remove('hidden'); 
             lucide.createIcons(); 
@@ -905,15 +1568,108 @@
 
         function hideConfirmModal() { document.getElementById('confirmModal').classList.add('hidden'); }
 
+        function prepareExportClone(sourceElement) {
+            const stage = document.createElement('div');
+            stage.id = 'export-stage';
+            stage.style.position = 'absolute';
+            stage.style.left = '-10000px';
+            stage.style.top = '0';
+            stage.style.pointerEvents = 'none';
+            stage.style.overflow = 'visible';
+            stage.style.width = 'max-content';
+            stage.style.height = 'auto';
+
+            const clone = sourceElement.cloneNode(true);
+            clone.id = 'export-wrapper-clone';
+            clone.style.position = 'relative';
+            clone.style.left = '0';
+            clone.style.top = '0';
+            clone.style.background = '#f0f2f5';
+            clone.style.overflow = 'visible';
+            clone.style.display = 'block';
+            clone.style.pointerEvents = 'none';
+            clone.style.gap = '40px';
+
+            const baseWidth = Math.max(
+                Math.ceil(sourceElement.getBoundingClientRect().width || 0),
+                sourceElement.scrollWidth || 0,
+                1100
+            );
+
+            clone.style.width = `${baseWidth}px`;
+            clone.style.minWidth = `${baseWidth}px`;
+            clone.style.maxWidth = 'none';
+
+            const previewCard = clone.querySelector('#export-preview-card');
+            if (previewCard) {
+                previewCard.style.overflow = 'hidden';
+                previewCard.style.width = '100%';
+                previewCard.style.minWidth = '0';
+                previewCard.style.borderRadius = '16px';
+                previewCard.style.marginTop = '8px';
+            }
+
+            const table = clone.querySelector('#export-preview-table');
+            if (table) {
+                table.style.width = '100%';
+                table.style.minWidth = '0';
+                table.style.tableLayout = 'fixed';
+            }
+
+            const exportHeaders = clone.querySelectorAll('#export-preview-table thead th');
+            if (exportHeaders.length >= 6) {
+                exportHeaders[0].style.width = '15%';
+                exportHeaders[1].style.width = '10%';
+                exportHeaders[2].style.width = '20%';
+                exportHeaders[3].style.width = '28%';
+                exportHeaders[4].style.width = '12%';
+                exportHeaders[5].style.width = '15%';
+                exportHeaders.forEach(cell => {
+                    cell.style.paddingTop = '26px';
+                    cell.style.paddingBottom = '16px';
+                    cell.style.verticalAlign = 'middle';
+                    cell.style.lineHeight = '1.25';
+                });
+                exportHeaders[5].style.paddingRight = '28px';
+            }
+
+            clone.querySelectorAll('#export-preview-table tbody td').forEach(cell => {
+                cell.style.whiteSpace = 'normal';
+                cell.style.wordBreak = 'break-word';
+                cell.style.overflowWrap = 'anywhere';
+                cell.style.hyphens = 'auto';
+            });
+
+            clone.querySelectorAll('#export-preview-table thead th').forEach(cell => {
+                cell.style.whiteSpace = 'nowrap';
+                cell.style.wordBreak = 'normal';
+                cell.style.overflowWrap = 'normal';
+                cell.style.hyphens = 'manual';
+            });
+
+            stage.appendChild(clone);
+            return { stage, clone };
+        }
+
         async function executeSend() {
             hideConfirmModal();
             const btnSpan = document.querySelector('button[onclick="confirmBeforeSend()"] span.hidden.sm\\:inline') || document.querySelector('button[onclick="confirmBeforeSend()"] span');
             const originalText = btnSpan.innerText; 
             btnSpan.innerText = "Salvando e Gerando...";
+            const element = document.getElementById('export-wrapper');
+            const EXPORT_PIXEL_RATIO = 3;
+            const captureOptions = {
+                pixelRatio: EXPORT_PIXEL_RATIO,
+                backgroundColor: '#f0f2f5',
+                cacheBust: true
+            };
+            let exportStage = null;
+            let exportClone = null;
             try {
                 // Monta os dados para enviar para a planilha (Uma linha para cada bloco de tarefa)
                 const weekNumber = getEffectiveWeekNumber();
                 const local = document.getElementById('localSelect').value;
+                const isColaboradores = isColaboradoresProgramacao(local);
                 
                 let payload = [];
                 daysOfWeek.forEach(day => {
@@ -927,29 +1683,38 @@
                         taskBlocks.forEach(block => {
                             const solSel = block.querySelector('.task-solicitante').value;
                             const solCust = block.querySelector('.task-solicitante-custom').value.trim();
-                            const opSel = block.querySelector('.task-operador').value;
-                            const opCust = block.querySelector('.task-operador-custom').value.trim();
                             
                             const finalSolicitante = solSel === 'Outro' ? solCust : solSel;
-                            const finalOperador = opSel === 'Outro' ? opCust : opSel;
+                            const finalOperador = isColaboradores
+                                ? getSelectedCollaborators(block).join(', ')
+                                : (() => {
+                                    const opSel = block.querySelector('.task-operador').value;
+                                    const opCust = block.querySelector('.task-operador-custom').value.trim();
+                                    return opSel === 'Outro' ? opCust : opSel;
+                                  })();
 
-                            const tVal = block.querySelector('.task-tempo').value.trim();
-                            const tUnit = block.querySelector('.task-tempo-unit').value;
-                            const cVal = block.querySelector('.task-combustivel').value.trim();
-                            
-                            const finalTempo = tUnit === 'Indeterminado' ? 'Indeterminado' : (tVal ? `${tVal} ${tUnit}` : '');
-
-                            payload.push({
+                            const payloadItem = {
                                 semana: weekNumber,
                                 local: local,
                                 programador: finalSolicitante,
                                 operador: finalOperador,
                                 diaSemana: dayLabel,
                                 blocos: block.querySelector('.task-blocos').value.trim(),
-                                tempo: finalTempo,
-                                combustivel: cVal ? `${cVal} L` : '',
                                 operacoes: block.querySelector('.task-operacoes').value.trim()
-                            });
+                            };
+
+                            if (!isColaboradores) {
+                                const tempoEl = block.querySelector('.task-tempo');
+                                const tempoUnitEl = block.querySelector('.task-tempo-unit');
+                                const cVal = block.querySelector('.task-combustivel').value.trim();
+                                const tVal = tempoEl ? tempoEl.value.trim() : '';
+                                const tUnit = tempoUnitEl ? tempoUnitEl.value : '';
+                                const finalTempo = tUnit === 'Indeterminado' ? 'Indeterminado' : (tVal ? `${tVal} ${tUnit}` : '');
+                                payloadItem.tempo = finalTempo;
+                                payloadItem.combustivel = cVal ? `${cVal} L` : '';
+                            }
+
+                            payload.push(payloadItem);
                         });
                     }
                 });
@@ -959,35 +1724,25 @@
                     await sendDataToGoogleSheets(payload);
                 }
 
-                const element = document.getElementById('export-wrapper');
-                const canvas = await html2canvas(element, { 
-                    scale: 5,
-                    useCORS: true, 
-                    scrollY: -window.scrollY,
-                    backgroundColor: '#f0f2f5',
-                    onclone: (doc) => {
-                        doc.documentElement.style.fontSize = '22px'; 
-                        doc.documentElement.style.webkitFontSmoothing = 'antialiased';
-                        doc.documentElement.style.textRendering = 'optimizeLegibility';
-                        const el = doc.getElementById('export-wrapper'); 
-                        if (el) { 
-                            el.style.width = '1200px'; 
-                            el.style.maxWidth = '1200px';
-                            el.style.height = 'auto'; // Altura dinâmica baseada no conteúdo
-                            el.style.padding = '40px';
-                            el.style.borderRadius = '0'; 
-                            el.style.boxShadow = 'none';
-                        }
-                    }
-                });
-                preparedShareData.dataUrl = canvas.toDataURL('image/png');
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const exportSetup = prepareExportClone(element);
+                exportStage = exportSetup.stage;
+                exportClone = exportSetup.clone;
+                document.body.appendChild(exportStage);
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+                const dataUrl = await htmlToImage.toPng(exportClone, captureOptions);
+                const blob = await (await fetch(dataUrl)).blob();
+
+                preparedShareData.dataUrl = dataUrl;
                 preparedShareData.file = new File([blob], preparedShareData.filename, { type: 'image/png' });
                 document.getElementById('successModal').classList.remove('hidden');
             } catch (err) {
                 console.error(err);
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
             } finally {
+                if (exportStage && exportStage.parentNode) {
+                    exportStage.parentNode.removeChild(exportStage);
+                }
                 btnSpan.innerText = originalText;
             }
         }
