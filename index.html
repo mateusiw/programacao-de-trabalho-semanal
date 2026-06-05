@@ -406,9 +406,7 @@
             "Patrick Araujo",
             "Dionísio Pereira",
             "Pedro Lucas",
-            "Kauan Xavier",
-            "Julio Cantillo"
-            "Emanuel Cardoso",
+            "Julio Cantillo",
             "Felipe Bandeira"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -512,13 +510,53 @@
             chip.className = 'task-colaborador-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200';
             chip.dataset.name = name;
             chip.innerHTML = `
-                <span>${name}</span>
+                <span>${escapeHtml(name)}</span>
                 <button type="button" class="w-4 h-4 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-[10px] leading-none hover:bg-brand-300" onclick="removeCollaboratorChip(this)">×</button>
             `;
             container.appendChild(chip);
             updateCollaboratorCounter(taskId);
             if (!silent) updatePreview();
             return true;
+        }
+
+        function showCustomCollaboratorInput(taskId) {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const customWrapper = taskEl.querySelector('.task-colaborador-custom-wrapper');
+            const customInput = taskEl.querySelector('.task-colaborador-custom');
+            if (!customWrapper || !customInput) return;
+
+            hideCollaboratorDropdown(taskId);
+            customWrapper.classList.remove('hidden');
+            customInput.value = '';
+            customInput.focus();
+        }
+
+        function hideCustomCollaboratorInput(taskId) {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const customWrapper = taskEl.querySelector('.task-colaborador-custom-wrapper');
+            const customInput = taskEl.querySelector('.task-colaborador-custom');
+            if (!customWrapper || !customInput) return;
+
+            customWrapper.classList.add('hidden');
+            customInput.value = '';
+        }
+
+        function addCustomCollaborator(taskId) {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const customInput = taskEl.querySelector('.task-colaborador-custom');
+            if (!customInput) return;
+
+            const name = customInput.value.trim();
+            if (!name) return;
+
+            if (createCollaboratorChip(taskId, name)) {
+                customInput.value = '';
+                hideCustomCollaboratorInput(taskId);
+                updateCollaboratorCounter(taskId);
+            }
         }
 
         function removeCollaboratorChip(button) {
@@ -550,8 +588,16 @@
 
             const matches = getCollaboratorMatches(query, taskId);
             if (!matches.length) {
-                dropdown.innerHTML = '<div class="px-4 py-3 text-xs text-slate-400">Nenhum colaborador encontrado.</div>';
+                dropdown.innerHTML = `
+                    <div class="px-4 py-3 text-xs text-slate-400">Nenhum colaborador encontrado.</div>
+                    <div class="border-t border-slate-100"></div>
+                    <button type="button" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-brand-700 hover:bg-brand-50 transition-colors" onclick="showCustomCollaboratorInput('${taskId}')">
+                        <span>Outro</span>
+                        <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
+                    </button>
+                `;
                 dropdown.classList.remove('hidden');
+                lucide.createIcons();
                 return;
             }
 
@@ -560,7 +606,13 @@
                     <span>${escapeHtml(name)}</span>
                     <i data-lucide="plus" class="w-4 h-4 text-brand-500"></i>
                 </button>
-            `).join('');
+            `).join('') + `
+                <div class="border-t border-slate-100"></div>
+                <button type="button" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-brand-700 hover:bg-brand-50 transition-colors" onclick="showCustomCollaboratorInput('${taskId}')">
+                    <span>Outro</span>
+                    <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
+                </button>
+            `;
             dropdown.classList.remove('hidden');
             lucide.createIcons();
         }
@@ -584,6 +636,7 @@
             const input = document.querySelector(`#${taskId} .task-colaborador-input`);
             if (!input) return;
             closeAllCollaboratorDropdowns();
+            hideCustomCollaboratorInput(taskId);
             renderCollaboratorDropdown(taskId, input.value);
         }
 
@@ -617,6 +670,18 @@
 
             if (event.key === 'Escape') {
                 hideCollaboratorDropdown(taskId);
+            }
+        }
+
+        function handleCustomCollaboratorKeydown(event, taskId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addCustomCollaborator(taskId);
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                hideCustomCollaboratorInput(taskId);
             }
         }
 
@@ -1235,8 +1300,6 @@
                             ${isColaboradores ? `
                                 <div class="space-y-2">
                                     <div class="flex items-end justify-between gap-3">
-                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Colaboradores</span>
-                                        <span class="task-colaborador-count text-[10px] font-black text-brand-600 uppercase tracking-widest" data-count="${selectedCollaborators.length}">${collaboratorCountText}</span>
                                     </div>
                                     <div class="relative">
                                         <input
@@ -1251,10 +1314,23 @@
                                         <div class="task-colaborador-dropdown hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl" onclick="if (event.target === this) hideCollaboratorDropdown('${taskId}')">
                                         </div>
                                     </div>
+                                    <div class="task-colaborador-custom-wrapper hidden space-y-2">
+                                        <div class="flex gap-2">
+                                            <input
+                                                type="text"
+                                                class="task-colaborador-custom w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
+                                                placeholder="Digite o nome..."
+                                                onkeydown="handleCustomCollaboratorKeydown(event, '${taskId}')"
+                                                oninput="updatePreview()"
+                                            >
+                                            <button type="button" class="shrink-0 px-3 rounded-xl bg-brand-600 text-white text-xs font-black uppercase tracking-wider hover:bg-brand-700 transition-colors" onclick="addCustomCollaborator('${taskId}')">OK</button>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 font-medium">Digite o nome e pressione Enter ou clique em OK.</p>
+                                    </div>
                                     <div class="task-colaboradores-chips flex flex-wrap gap-2 min-h-10 p-2 rounded-xl border border-slate-200 bg-white">
                                         ${selectedCollaborators.map(nome => `
-                                            <span class="task-colaborador-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200" data-name="${nome}">
-                                                <span>${nome}</span>
+                                            <span class="task-colaborador-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200" data-name="${escapeHtml(nome)}">
+                                                <span>${escapeHtml(nome)}</span>
                                                 <button type="button" class="w-4 h-4 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-[10px] leading-none hover:bg-brand-300" onclick="removeCollaboratorChip(this)">×</button>
                                             </span>
                                         `).join('')}
