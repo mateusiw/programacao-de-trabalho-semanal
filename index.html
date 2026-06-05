@@ -271,27 +271,6 @@
         </div>
     </div>
 
-    <!-- MODAL DE SUCESSO E COMPARTILHAMENTO -->
-    <div id="successModal" class="fixed inset-0 bg-black/60 z-[70] hidden flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 w-11/12 max-w-sm transform transition-all scale-100 text-center flex flex-col items-center">
-            <div class="flex items-center justify-center h-16 w-16 rounded-full bg-green-50 mb-5">
-                <i data-lucide="check-circle-2" class="h-10 w-10 text-green-500"></i>
-            </div>
-            <h3 class="text-2xl font-black text-slate-800 mb-2">Documento Pronto!</h3>
-            <p class="text-sm text-slate-500 mb-8 leading-relaxed font-medium">
-                Clique abaixo para enviar para o WhatsApp com o texto já formatado.
-            </p>
-            <div class="w-full flex flex-col gap-3">
-                <button onclick="executeShare()" class="w-full flex justify-center items-center gap-2 px-4 py-3 bg-[#25D366] hover:bg-[#128C7E] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-green-600/20 active:scale-95 uppercase">
-                    <i data-lucide="message-circle" class="w-5 h-5"></i> WhatsApp
-                </button>
-                <button onclick="hideSuccessModal()" class="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors uppercase">
-                    Fechar
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- MODAL DE MENSAGEM -->
     <div id="messageModal" class="fixed inset-0 bg-black/50 z-50 hidden flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm transform transition-all scale-100 text-center">
@@ -1735,7 +1714,7 @@
 
                 preparedShareData.dataUrl = dataUrl;
                 preparedShareData.file = new File([blob], preparedShareData.filename, { type: 'image/png' });
-                document.getElementById('successModal').classList.remove('hidden');
+                downloadFile(dataUrl, preparedShareData.filename);
             } catch (err) {
                 console.error(err);
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
@@ -1746,27 +1725,6 @@
                 btnSpan.innerText = originalText;
             }
         }
-
-        async function executeShare() {
-            if (!preparedShareData) return;
-            const { file, filename, shareText, dataUrl } = preparedShareData;
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { 
-                try {
-                    await navigator.share({ files: [file], title: filename, text: shareText }); 
-                    hideSuccessModal();
-                } catch (shareErr) {
-                    console.log("Compartilhamento cancelado ou falhou:", shareErr);
-                }
-            } else { 
-                downloadFile(dataUrl, filename); 
-                setTimeout(() => { 
-                    window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank'); 
-                    hideSuccessModal();
-                }, 1000); 
-            }
-        }
-
-        function hideSuccessModal() { document.getElementById('successModal').classList.add('hidden'); }
 
         async function sendDataToGoogleSheets(payload) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec"; 
