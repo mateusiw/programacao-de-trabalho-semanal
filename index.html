@@ -126,6 +126,10 @@
             </div>
         </div>
         <div class="flex gap-2">
+            <button type="button" onclick="openHistoryModal()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all active:scale-95 border border-slate-200">
+                <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
+                <span class="hidden sm:inline">Histórico</span>
+            </button>
             <button type="button" onclick="confirmClearData()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all active:scale-95 border border-slate-200">
                 <i data-lucide="trash-2" class="w-4 h-4 text-slate-500"></i>
                 <span class="hidden sm:inline">Limpar</span>
@@ -268,6 +272,51 @@
                     <i data-lucide="trash-2" class="w-4 h-4"></i> Apagar
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE HISTÓRICO -->
+    <div id="historyModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex justify-center items-start backdrop-blur-sm transition-opacity duration-300 overflow-y-auto py-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-[95vw] max-w-6xl my-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <div class="p-2 bg-brand-50 rounded-xl text-brand-600">
+                        <i data-lucide="history" class="w-5 h-5"></i>
+                    </div>
+                    Histórico de Programações
+                </h3>
+                <button onclick="closeHistoryModal()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Data Inicial</label>
+                    <input type="date" id="historyStartDate" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700">
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Data Final</label>
+                    <input type="date" id="historyEndDate" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700">
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Tipo</label>
+                    <select id="historyLocal" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 cursor-pointer">
+                        <option value="Trator">Trator</option>
+                        <option value="Colaboradores">Colaboradores</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="fetchHistory()" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-black rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center gap-2 mb-4">
+                <i data-lucide="search" class="w-4 h-4"></i> Buscar Histórico
+            </button>
+            <div id="historyLoading" class="hidden text-center py-8">
+                <div class="flex items-center justify-center gap-2 text-slate-400 text-sm font-bold">
+                    <div class="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin"></div>
+                    Buscando registros...
+                </div>
+            </div>
+            <div id="historyEmpty" class="hidden text-center text-slate-400 text-sm italic py-8">Nenhum registro encontrado para o período selecionado.</div>
+            <div id="historyResults" class="hidden rounded-xl border border-slate-200 overflow-hidden max-h-[55vh] overflow-y-auto"></div>
         </div>
     </div>
 
@@ -1085,6 +1134,9 @@
                             tempoUnit: isColaboradores || !tempoUnitEl ? '' : tempoUnitEl.value,
                             combustivel: isColaboradores || !combustivelEl ? '' : combustivelEl.value,
                             operacoes: block.querySelector('.task-operacoes').value,
+                            status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })(),
+                            rowNumber: block.dataset.rowNumber || '',
+                            rowLocal: block.dataset.rowLocal || '',
                         });
                     });
                     data.days[dayId] = tasks;
@@ -1276,6 +1328,9 @@
             const opCustomVal = taskData ? taskData.operadorCustom : '';
             const blocosVal = taskData ? taskData.blocos : '';
             const operacoesVal = taskData ? taskData.operacoes : '';
+            const statusVal = taskData ? (taskData.status || 'Em Andamento') : 'Em Andamento';
+            const rowNumber = taskData ? (taskData.rowNumber || '') : '';
+            const rowLocal  = taskData ? (taskData.rowLocal  || '') : '';
 
             let solicitantesHtml = '<option value="">Selecione...</option>';
             dbSolicitantes.forEach(nome => {
@@ -1290,14 +1345,30 @@
             operadoresHtml += `<option value="Outro" ${opVal === 'Outro' ? 'selected' : ''}>Outro</option>`;
 
             const taskHtml = `
-                <div class="task-block relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm" id="${taskId}">
+                <div class="task-block relative bg-white p-4 rounded-xl border shadow-sm ${rowNumber ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200'}" id="${taskId}" ${rowNumber ? `data-row-number="${rowNumber}" data-row-local="${escapeHtml(rowLocal)}"` : ''}>
                     
                     ${taskCount > 0 ? `
                         <button type="button" onclick="removeTaskBlock('${taskId}')" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full p-1.5 hover:bg-red-200 transition-colors shadow-sm z-10">
                             <i data-lucide="x" class="w-3.5 h-3.5"></i>
                         </button>
                     ` : ''}
-                    
+
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bloco ${taskCount + 1}</span>
+                            ${rowNumber ? '<span class="text-[9px] font-black text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Editando</span>' : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</label>
+                            <select class="task-status text-[10px] font-black px-3 py-1.5 rounded-full border-2 outline-none cursor-pointer transition-all" onchange="applyStatusStyle(this); updatePreview()">
+                                <option value="Em Andamento" ${statusVal === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
+                                <option value="Concluído" ${statusVal === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                <option value="Pendente" ${statusVal === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                                <option value="Adiado" ${statusVal === 'Adiado' ? 'selected' : ''}>Adiado</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Solicitante</label>
@@ -1402,8 +1473,10 @@
             container.insertAdjacentHTML('beforeend', taskHtml);
             lucide.createIcons();
             if (isColaboradores) updateCollaboratorCounter(taskId);
-            
-            if (!taskData) updatePreview(); 
+            const statusEl = document.querySelector(`#${taskId} .task-status`);
+            if (statusEl) applyStatusStyle(statusEl);
+
+            if (!taskData) updatePreview();
         }
 
         function toggleCustomInput(selectEl) {
@@ -1485,6 +1558,7 @@
         }
 
         let preparedShareData = null;
+        let historyRows = [];
 
         function updatePreview() {
             const weekNumber = getEffectiveWeekNumber();
@@ -1581,6 +1655,13 @@
                                             return combustivel ? `${combustivel} L` : '--';
                                         })()}
                                     </td>`}
+                                    <td class="py-3 px-4">
+                                        ${(() => {
+                                            const statusEl = block.querySelector('.task-status');
+                                            const status = statusEl ? statusEl.value : 'Em Andamento';
+                                            return statusBadgeHtml(status);
+                                        })()}
+                                    </td>
                                 </tr>
                             `;
                         });
@@ -1596,11 +1677,12 @@
                         <table id="export-preview-table" class="w-full min-w-[700px] text-left border-collapse">
                             <thead>
                                 <tr class="bg-brand-100 text-brand-800 text-[10px] sm:text-[11px] uppercase tracking-widest border-b-2 border-brand-200">
-                                    <th class="p-3 sm:p-4 font-black w-[15%]">Dias</th>
-                                    <th class="p-3 sm:p-4 font-black w-[10%]">Local</th>
-                                    <th class="p-3 sm:p-4 font-black w-[20%]">Responsáveis</th>
-                                    <th class="p-3 sm:p-4 font-black w-[30%]">Operações</th>
-                                    ${isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[15%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[10%]">Combustível</th>'}
+                                    <th class="p-3 sm:p-4 font-black w-[13%]">Dias</th>
+                                    <th class="p-3 sm:p-4 font-black w-[9%]">Local</th>
+                                    <th class="p-3 sm:p-4 font-black w-[18%]">Responsáveis</th>
+                                    <th class="p-3 sm:p-4 font-black w-[25%]">Operações</th>
+                                    ${isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[11%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[9%]">Combustível</th>'}
+                                    <th class="p-3 sm:p-4 font-black w-[15%]">Status</th>
                                 </tr>
                             </thead>
                             <tbody class="text-[13px] sm:text-[14px] text-slate-700">
@@ -1687,21 +1769,19 @@
             }
 
             const exportHeaders = clone.querySelectorAll('#export-preview-table thead th');
-            if (exportHeaders.length >= 6) {
-                exportHeaders[0].style.width = '15%';
-                exportHeaders[1].style.width = '10%';
-                exportHeaders[2].style.width = '20%';
-                exportHeaders[3].style.width = '28%';
-                exportHeaders[4].style.width = '12%';
-                exportHeaders[5].style.width = '15%';
-                exportHeaders.forEach(cell => {
-                    cell.style.paddingTop = '26px';
-                    cell.style.paddingBottom = '16px';
-                    cell.style.verticalAlign = 'middle';
-                    cell.style.lineHeight = '1.25';
-                });
-                exportHeaders[5].style.paddingRight = '28px';
+            exportHeaders.forEach(cell => {
+                cell.style.paddingTop = '26px';
+                cell.style.paddingBottom = '16px';
+                cell.style.verticalAlign = 'middle';
+                cell.style.lineHeight = '1.25';
+            });
+            if (exportHeaders.length > 0) {
+                exportHeaders[exportHeaders.length - 1].style.paddingRight = '28px';
             }
+            const tratorWidths = ['13%', '8%', '18%', '27%', '11%', '9%', '14%'];
+            const colaboradoresWidths = ['15%', '10%', '22%', '33%', '20%'];
+            const colWidths = exportHeaders.length >= 7 ? tratorWidths : colaboradoresWidths;
+            colWidths.forEach((w, i) => { if (exportHeaders[i]) exportHeaders[i].style.width = w; });
 
             clone.querySelectorAll('#export-preview-table tbody td').forEach(cell => {
                 cell.style.whiteSpace = 'normal';
@@ -1741,7 +1821,8 @@
                 const local = document.getElementById('localSelect').value;
                 const isColaboradores = isColaboradoresProgramacao(local);
                 
-                let payload = [];
+                let inserts = [];
+                let updates = [];
                 daysOfWeek.forEach(day => {
                     const dayId = day.toLowerCase().split('-')[0];
                     const checkEl = document.getElementById(`check_${dayId}`);
@@ -1749,11 +1830,11 @@
                     if (checkEl && checkEl.checked) {
                         const dayLabel = cardEl && cardEl.dataset.fullDateLabel ? cardEl.dataset.fullDateLabel : day;
                         const taskBlocks = document.querySelectorAll(`#tasks_container_${dayId} .task-block`);
-                        
+
                         taskBlocks.forEach(block => {
                             const solSel = block.querySelector('.task-solicitante').value;
                             const solCust = block.querySelector('.task-solicitante-custom').value.trim();
-                            
+
                             const finalSolicitante = solSel === 'Outro' ? solCust : solSel;
                             const finalOperador = isColaboradores
                                 ? getSelectedCollaborators(block).join(', ')
@@ -1770,7 +1851,8 @@
                                 operador: finalOperador,
                                 diaSemana: dayLabel,
                                 blocos: block.querySelector('.task-blocos').value.trim(),
-                                operacoes: block.querySelector('.task-operacoes').value.trim()
+                                operacoes: block.querySelector('.task-operacoes').value.trim(),
+                                status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })()
                             };
 
                             if (!isColaboradores) {
@@ -1784,14 +1866,20 @@
                                 payloadItem.combustivel = cVal ? `${cVal} L` : '';
                             }
 
-                            payload.push(payloadItem);
+                            if (block.dataset.rowNumber) {
+                                updates.push({ ...payloadItem, rowNumber: parseInt(block.dataset.rowNumber), local: block.dataset.rowLocal || local });
+                            } else {
+                                inserts.push(payloadItem);
+                            }
                         });
                     }
                 });
 
-                // Envia para o Google Sheets se houver tarefas
-                if (payload.length > 0) {
-                    await sendDataToGoogleSheets(payload);
+                if (inserts.length > 0) {
+                    await sendDataToGoogleSheets(inserts);
+                }
+                if (updates.length > 0) {
+                    await sendUpdatesToGoogleSheets(updates);
                 }
 
                 const exportSetup = prepareExportClone(element);
@@ -1818,17 +1906,32 @@
         }
 
         async function sendDataToGoogleSheets(payload) {
-            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec"; 
-            try { 
-                await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-                    body: JSON.stringify(payload) 
-                }); 
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
                 console.log("Dados enviados para a planilha com sucesso!");
             } catch (err) {
                 console.error("Erro ao enviar para a planilha:", err);
+            }
+        }
+
+        async function sendUpdatesToGoogleSheets(updates) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateRows', updates })
+                });
+                console.log("Atualizações enviadas para a planilha com sucesso!");
+            } catch (err) {
+                console.error("Erro ao atualizar planilha:", err);
             }
         }
 
@@ -1850,6 +1953,437 @@
             modal.classList.remove('hidden'); lucide.createIcons();
         }
         function hideMessageModal() { document.getElementById('messageModal').classList.add('hidden'); }
+
+        // ==========================================
+        // STATUS DAS TAREFAS
+        // ==========================================
+
+        const STATUS_STYLES = {
+            'Em Andamento': { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
+            'Concluído':    { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+            'Pendente':     { bg: '#fed7aa', color: '#9a3412', border: '#fdba74' },
+            'Adiado':       { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
+        };
+        const STATUS_BADGE_CLASSES = {
+            'Em Andamento': 'bg-brand-100 text-brand-800 border-brand-200',
+            'Concluído':    'bg-green-100 text-green-800 border-green-200',
+            'Pendente':     'bg-orange-100 text-orange-800 border-orange-200',
+            'Adiado':       'bg-red-100 text-red-800 border-red-200',
+        };
+
+        function applyStatusStyle(sel) {
+            const s = STATUS_STYLES[sel.value] || STATUS_STYLES['Em Andamento'];
+            sel.style.background = s.bg;
+            sel.style.color = s.color;
+            sel.style.borderColor = s.border;
+        }
+
+        function statusBadgeHtml(status) {
+            const cls = STATUS_BADGE_CLASSES[status] || STATUS_BADGE_CLASSES['Em Andamento'];
+            return `<span class="inline-block px-2 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${cls}">${escapeHtml(status || 'Em Andamento')}</span>`;
+        }
+
+        function statusSelectHtml(status, onchangeAttr) {
+            const s = STATUS_STYLES[status] || STATUS_STYLES['Em Andamento'];
+            const style = `background:${s.bg};color:${s.color};border-color:${s.border};`;
+            return `<select style="${style}" class="text-[9px] font-black px-2 py-1 rounded-full border-2 outline-none cursor-pointer transition-all" onchange="${onchangeAttr}">
+                <option value="Em Andamento" ${status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
+                <option value="Concluído" ${status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                <option value="Pendente" ${status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                <option value="Adiado" ${status === 'Adiado' ? 'selected' : ''}>Adiado</option>
+            </select>`;
+        }
+
+        // ==========================================
+        // HISTÓRICO
+        // ==========================================
+
+        function openHistoryModal() {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endInput = document.getElementById('historyEndDate');
+            const startInput = document.getElementById('historyStartDate');
+            if (!endInput.value) endInput.value = today.toISOString().split('T')[0];
+            if (!startInput.value) startInput.value = firstDay.toISOString().split('T')[0];
+            document.getElementById('historyModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        async function fetchHistory() {
+            const startDate = document.getElementById('historyStartDate').value;
+            const endDate = document.getElementById('historyEndDate').value;
+            const local = document.getElementById('historyLocal').value;
+
+            const resultsEl = document.getElementById('historyResults');
+            const emptyEl = document.getElementById('historyEmpty');
+            const loadingEl = document.getElementById('historyLoading');
+
+            resultsEl.classList.add('hidden');
+            emptyEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+
+            try {
+                const params = new URLSearchParams({ startDate, endDate, local });
+                const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                const data = await response.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (data.status === 'erro') {
+                    showMessageModal('Erro', 'Não foi possível buscar o histórico: ' + data.mensagem, 'error');
+                    return;
+                }
+
+                if (!data.rows || data.rows.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                renderHistoryResults(data.rows, local);
+            } catch (err) {
+                loadingEl.classList.add('hidden');
+                showMessageModal('Erro', 'Falha ao conectar com o servidor. Verifique sua conexão.', 'error');
+                console.error(err);
+            }
+        }
+
+        function loadDayIntoForm(dayKey) {
+            const dayEntries = historyRows
+                .map((row, index) => ({ row, index }))
+                .filter(({ row }) => row.diaSemana === dayKey);
+
+            if (!dayEntries.length) return;
+
+            closeHistoryModal();
+
+            const firstRow = dayEntries[0].row;
+            const newType = firstRow.local || 'Trator';
+
+            if (getSelectedProgramacaoType() !== newType) {
+                document.getElementById('localSelect').value = newType;
+                handleProgramacaoTypeChange();
+            }
+
+            document.getElementById('weekModeSelect').value = 'manual';
+            document.getElementById('weekNumber').value = firstRow.semana;
+            toggleManualWeek();
+            updateDayLabels();
+
+            const firstWord = String(firstRow.diaSemana).split(' ')[0].toLowerCase();
+            const dayId = daysOfWeek
+                .map(d => d.toLowerCase().split('-')[0])
+                .find(id => firstWord === id || firstWord.startsWith(id.slice(0, 4)));
+
+            if (!dayId) {
+                showMessageModal('Aviso', 'Não foi possível identificar o dia da semana.', 'info');
+                return;
+            }
+
+            const checkbox = document.getElementById(`check_${dayId}`);
+            if (!checkbox) return;
+
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                toggleDayFields(dayId);
+            }
+
+            document.getElementById(`tasks_container_${dayId}`).innerHTML = '';
+
+            dayEntries.forEach(({ row }) => {
+                const isColaboradores = newType === 'Colaboradores';
+
+                let solVal = row.programador || '';
+                let solCustomVal = '';
+                if (solVal && !dbSolicitantes.includes(solVal)) {
+                    solCustomVal = solVal; solVal = 'Outro';
+                }
+
+                let opVal = row.operador || '';
+                let opCustomVal = '';
+                if (!isColaboradores && opVal && !dbOperadores.includes(opVal)) {
+                    opCustomVal = opVal; opVal = 'Outro';
+                }
+
+                let tempo = '', tempoUnit = 'H';
+                if (!isColaboradores && row.tempo) {
+                    if (String(row.tempo) === 'Indeterminado') {
+                        tempoUnit = 'Indeterminado';
+                    } else {
+                        const parts = String(row.tempo).split(' ');
+                        tempo = parts[0] || '';
+                        tempoUnit = parts[1] || 'H';
+                    }
+                }
+
+                addTaskBlock(dayId, {
+                    solicitante: solVal, solicitanteCustom: solCustomVal,
+                    operador: opVal, operadorCustom: opCustomVal,
+                    blocos: row.blocos || '', operacoes: row.operacoes || '',
+                    tempo, tempoUnit,
+                    combustivel: (!isColaboradores && row.combustivel)
+                        ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '',
+                    status: row.status || 'Em Andamento',
+                    rowNumber: row.rowNumber || '',
+                    rowLocal: row.local || ''
+                });
+            });
+
+            updatePreview();
+            document.getElementById('planningForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showMessageModal('Carregado', `${dayEntries.length} programação(ões) de ${firstRow.diaSemana} carregadas no formulário.`, 'success');
+        }
+
+        function toggleHistoryDay(groupId) {
+            const content = document.getElementById(groupId + '_body');
+            const icon = document.getElementById(groupId + '_icon');
+            if (!content) return;
+            const isOpen = !content.classList.contains('hidden');
+            content.classList.toggle('hidden', isOpen);
+            icon.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+        }
+
+        function renderHistoryResults(rows, local) {
+            historyRows = rows;
+            const isColaboradores = local === 'Colaboradores';
+            const resultsEl = document.getElementById('historyResults');
+
+            // ── Ordenar do mais recente para o mais antigo ───────────────────
+            rows = rows.slice().sort((a, b) => (b.rowNumber || 0) - (a.rowNumber || 0));
+
+            // ── Agrupar por diaSemana ────────────────────────────────────────
+            const groupOrder = [];
+            const groups = {};
+            rows.forEach((row, index) => {
+                const key = row.diaSemana || '—';
+                if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+                groups[key].push({ row, index });
+            });
+
+            const totalDias = groupOrder.length;
+
+            // ── Resumo de status de um grupo ─────────────────────────────────
+            function statusSummary(entries) {
+                const counts = {};
+                entries.forEach(({ row }) => {
+                    const s = row.status || 'Em Andamento';
+                    counts[s] = (counts[s] || 0) + 1;
+                });
+                return Object.entries(counts).map(([s, n]) => {
+                    const cls = STATUS_BADGE_CLASSES[s] || STATUS_BADGE_CLASSES['Em Andamento'];
+                    return `<span class="inline-block px-2 py-0.5 rounded-full border text-[9px] font-black ${cls}">${n} ${escapeHtml(s)}</span>`;
+                }).join('');
+            }
+
+            // ── Card de cada programação dentro do grupo ─────────────────────
+            function recordCard({ row, index }) {
+                const sel = statusSelectHtml(row.status || 'Em Andamento',
+                    `updateHistoryStatus(${row.rowNumber}, '${escapeHtml(row.local)}', this.value, this, ${index})`);
+                const btn = `<button onclick="loadRecordIntoForm(${index})" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[9px] font-black rounded-lg transition-colors whitespace-nowrap shrink-0">
+                    <i data-lucide="arrow-up-left" class="w-3 h-3"></i> Carregar
+                </button>`;
+
+                const responsavelHtml = isColaboradores
+                    ? `<div class="col-span-2 sm:col-span-1">
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Colaboradores</p>
+                           <p class="text-[12px] text-slate-600 leading-relaxed">${escapeHtml(row.operador) || '--'}</p>
+                       </div>`
+                    : `<div>
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Operador</p>
+                           <p class="text-[12px] font-bold text-slate-700">${escapeHtml(row.operador) || '--'}</p>
+                       </div>
+                       <div>
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Tempo / Combust.</p>
+                           <p class="text-[12px] text-slate-500">${escapeHtml(String(row.tempo || '--'))} ${row.combustivel ? '· ' + escapeHtml(String(row.combustivel)) : ''}</p>
+                       </div>`;
+
+                return `
+                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[13px] font-black text-slate-800">${escapeHtml(row.blocos) || '—'}</span>
+                            <span class="text-[11px] font-bold text-slate-400">Sol: <span class="text-slate-600">${escapeHtml(row.programador) || '--'}</span></span>
+                        </div>
+                        ${btn}
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
+                        ${responsavelHtml}
+                        ${row.operacoes ? `<div class="col-span-2">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Operações</p>
+                            <p class="text-[12px] text-slate-600">${escapeHtml(row.operacoes)}</p>
+                        </div>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Status</span>
+                        ${sel}
+                    </div>
+                </div>`;
+            }
+
+            // ── Montar grupos em acordeão ─────────────────────────────────────
+            const groupsHtml = groupOrder.map((dayKey, gi) => {
+                const entries = groups[dayKey];
+                const groupId = `hg_${gi}`;
+                const sem = entries[0].row.semana;
+                const dataReg = entries[0].row.dataRegistro;
+                const summary = statusSummary(entries);
+                const cardsInner = entries.map(recordCard).join('');
+
+                return `
+                <div class="border-b border-slate-200 last:border-0">
+                    <div class="flex items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-3 flex-wrap min-w-0 flex-1 cursor-pointer" onclick="toggleHistoryDay('${groupId}')">
+                            <i data-lucide="chevron-down" id="${groupId}_icon" class="w-4 h-4 text-brand-500 shrink-0 transition-transform duration-200" style="transform:rotate(-90deg)"></i>
+                            <div class="min-w-0">
+                                <span class="text-[13px] font-black text-slate-800">${escapeHtml(dayKey)}</span>
+                                <span class="ml-2 text-[11px] font-bold text-slate-400">Sem. <span class="text-brand-600">${escapeHtml(String(sem))}</span></span>
+                                <span class="ml-2 text-[11px] text-slate-400">${escapeHtml(dataReg)}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap justify-end shrink-0">
+                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${entries.length} prog.</span>
+                            ${summary}
+                            <button onclick="loadDayIntoForm('${escapeHtml(dayKey)}')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-black rounded-lg transition-colors whitespace-nowrap shadow-sm shadow-brand-500/20">
+                                <i data-lucide="arrow-up-left" class="w-3.5 h-3.5"></i> Carregar dia
+                            </button>
+                        </div>
+                    </div>
+                    <div id="${groupId}_body" class="hidden px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        ${cardsInner}
+                    </div>
+                </div>`;
+            }).join('');
+
+            // ── Render final ─────────────────────────────────────────────────
+            resultsEl.innerHTML = `
+                <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                    <span class="text-[11px] font-black text-slate-500 uppercase tracking-wider">${rows.length} programação${rows.length !== 1 ? 'ões' : ''} em ${totalDias} dia${totalDias !== 1 ? 's' : ''}</span>
+                    <div class="flex items-center gap-3">
+                        <button onclick="document.querySelectorAll('[id$=_body]').forEach(el=>el.classList.remove('hidden')); document.querySelectorAll('[id$=_icon]').forEach(el=>el.style.transform='rotate(0deg)')" class="text-[10px] font-black text-brand-600 hover:text-brand-700 uppercase tracking-wider transition-colors">Expandir todos</button>
+                        <span class="text-slate-300 font-bold">|</span>
+                        <button onclick="document.querySelectorAll('[id$=_body]').forEach(el=>el.classList.add('hidden')); document.querySelectorAll('[id$=_icon]').forEach(el=>el.style.transform='rotate(-90deg)')" class="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider transition-colors">Recolher todos</button>
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-100">${groupsHtml}</div>
+            `;
+            resultsEl.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        async function updateHistoryStatus(rowNumber, local, newStatus, selectEl, rowIndex) {
+            applyStatusStyle(selectEl);
+            if (historyRows[rowIndex]) historyRows[rowIndex].status = newStatus;
+
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateStatus', rowNumber, local, status: newStatus })
+                });
+            } catch (err) {
+                console.error('Erro ao atualizar status:', err);
+            }
+        }
+
+        function loadRecordIntoForm(rowIndex) {
+            const row = historyRows[rowIndex];
+            if (!row) return;
+
+            closeHistoryModal();
+
+            const newType = row.local || 'Trator';
+            if (getSelectedProgramacaoType() !== newType) {
+                document.getElementById('localSelect').value = newType;
+                handleProgramacaoTypeChange();
+            }
+
+            document.getElementById('weekModeSelect').value = 'manual';
+            document.getElementById('weekNumber').value = row.semana;
+            toggleManualWeek();
+            updateDayLabels();
+
+            // Identifica o dia da semana pelo primeiro token do campo diaSemana
+            const firstWord = String(row.diaSemana).split(' ')[0].toLowerCase();
+            const dayId = daysOfWeek.map(d => d.toLowerCase().split('-')[0]).find(id => firstWord === id || firstWord.startsWith(id.slice(0, 4)));
+
+            if (!dayId) {
+                showMessageModal('Aviso', 'Não foi possível identificar o dia da semana no registro.', 'info');
+                return;
+            }
+
+            const checkbox = document.getElementById(`check_${dayId}`);
+            if (!checkbox) return;
+
+            if (!checkbox.checked) {
+                checkbox.checked = true;
+                toggleDayFields(dayId);
+            }
+
+            // Limpa blocos existentes desse dia e carrega o do histórico
+            document.getElementById(`tasks_container_${dayId}`).innerHTML = '';
+
+            const isColaboradores = newType === 'Colaboradores';
+
+            let solVal = row.programador || '';
+            let solCustomVal = '';
+            if (solVal && !dbSolicitantes.includes(solVal)) {
+                solCustomVal = solVal;
+                solVal = 'Outro';
+            }
+
+            let opVal = row.operador || '';
+            let opCustomVal = '';
+            if (!isColaboradores) {
+                if (opVal && !dbOperadores.includes(opVal)) {
+                    opCustomVal = opVal;
+                    opVal = 'Outro';
+                }
+            }
+
+            let tempo = '', tempoUnit = 'H';
+            if (!isColaboradores && row.tempo) {
+                if (String(row.tempo) === 'Indeterminado') {
+                    tempoUnit = 'Indeterminado';
+                } else {
+                    const parts = String(row.tempo).split(' ');
+                    tempo = parts[0] || '';
+                    tempoUnit = parts[1] || 'H';
+                }
+            }
+
+            const combustivel = (!isColaboradores && row.combustivel)
+                ? String(row.combustivel).replace(/\s*L$/i, '').trim()
+                : '';
+
+            const taskData = {
+                solicitante: solVal,
+                solicitanteCustom: solCustomVal,
+                operador: opVal,
+                operadorCustom: opCustomVal,
+                blocos: row.blocos || '',
+                operacoes: row.operacoes || '',
+                tempo,
+                tempoUnit,
+                combustivel,
+                status: row.status || 'Em Andamento',
+                rowNumber: row.rowNumber || '',
+                rowLocal: row.local || ''
+            };
+
+            addTaskBlock(dayId, taskData);
+            updatePreview();
+
+            document.getElementById('planningForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            showMessageModal('Carregado', 'Programação carregada no formulário. Faça as alterações e envie novamente.', 'success');
+        }
     </script>
 </body>
 </html>
