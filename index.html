@@ -170,8 +170,15 @@
                             <select id="localSelect" required onchange="handleProgramacaoTypeChange()" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 transition-all shadow-sm cursor-pointer">
                                 <option value="Trator">Trator</option>
                                 <option value="Colaboradores">Colaboradores</option>
+                                <option value="SPG Packing">SPG Packing</option>
                             </select>
                         </div>
+                    </div>
+
+                    <!-- DATA DO PACKING (visível somente no tipo SPG Packing) -->
+                    <div id="packingDateContainer" class="hidden">
+                        <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Data da Programação</label>
+                        <input type="date" id="packingDate" oninput="updatePreview()" class="w-full p-3.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 transition-all shadow-sm">
                     </div>
 
                     <!-- CONTAINER DOS DIAS DA SEMANA -->
@@ -199,8 +206,7 @@
                 <div class="export-card-header w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 flex flex-col gap-5 shrink-0">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-5">
                         <div class="flex items-center gap-4">
-                            <img src="https://i.imgur.com/xSmARfS.png" alt="Logo SPG" crossorigin="anonymous" class="export-logo w-16 h-16 object-contain">
-                            <div>
+<div>
                                 <h1 class="export-title font-black text-[16px] sm:text-[18px] text-slate-800 uppercase tracking-widest leading-tight">Programação de Trabalho</h1>
                                 <h2 class="export-subtitle text-[13px] font-bold text-brand-600 mt-1 uppercase tracking-wide" id="previewHeaderSub">Trator • Semana --</h2>
                             </div>
@@ -303,6 +309,7 @@
                     <select id="historyLocal" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 cursor-pointer">
                         <option value="Trator">Trator</option>
                         <option value="Colaboradores">Colaboradores</option>
+                        <option value="SPG Packing">SPG Packing</option>
                     </select>
                 </div>
             </div>
@@ -342,6 +349,16 @@
             "Gradeação",
             "Adubação",
             "Pulverização"
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        const dbOperacoesPacking = [
+            "Processamento de Tomates",
+            "Processamento de Brócolis",
+            "Auxiliar Produção",
+            "Pesagem de Caixas de Produção",
+            "Limpeza do Packing",
+            "Expedição",
+            "Processar Etiquetas"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const dbOperacoesColaboradores = [
@@ -477,6 +494,11 @@
                 documentTitle: 'Programação dos Colaboradores',
                 filePrefix: 'Programacao_Colaboradores',
                 storageKey: 'programacaoColaboradoresSPG_data'
+            },
+            'SPG Packing': {
+                documentTitle: 'Programação do Packing',
+                filePrefix: 'Programacao_Packing',
+                storageKey: 'programacaoPackingSPG_data'
             }
         };
 
@@ -501,7 +523,7 @@
         }
 
         function isColaboradoresProgramacao(type = getSelectedProgramacaoType()) {
-            return type === 'Colaboradores';
+            return type === 'Colaboradores' || type === 'SPG Packing';
         }
 
         function getResponsavelLabel(type = getSelectedProgramacaoType()) {
@@ -513,6 +535,7 @@
         }
 
         function getOperacoesList(type = getSelectedProgramacaoType()) {
+            if (type === 'SPG Packing') return dbOperacoesPacking;
             return isColaboradoresProgramacao(type) ? dbOperacoesColaboradores : dbOperacoesTrator;
         }
 
@@ -1016,15 +1039,19 @@
             lucide.createIcons();
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
-            
+
             document.getElementById('weekNumber').value = currentWeekNumber;
             currentProgramacaoType = getSelectedProgramacaoType();
-            
+
+            const packingDateEl = document.getElementById('packingDate');
+            document.getElementById('packingDateContainer').classList.toggle('hidden', currentProgramacaoType !== 'SPG Packing');
+            if (!packingDateEl.value) packingDateEl.value = today.toISOString().split('T')[0];
+
             renderDaysForm();
-            
+
             // Carregar dados salvos do localStorage
             loadFromLocalStorage(currentProgramacaoType);
-            
+
             updateDayLabels();
             updatePreview();
         });
@@ -1083,6 +1110,7 @@
 
         function handleProgramacaoTypeChange() {
             const newType = getSelectedProgramacaoType();
+            document.getElementById('packingDateContainer').classList.toggle('hidden', newType !== 'SPG Packing');
             if (newType === currentProgramacaoType) {
                 updatePreview();
                 return;
@@ -1102,6 +1130,7 @@
                 weekMode: document.getElementById('weekModeSelect').value,
                 weekNumber: document.getElementById('weekNumber').value,
                 local: type,
+                packingDate: type === 'SPG Packing' ? document.getElementById('packingDate').value : '',
                 days: {}
             };
 
@@ -1158,6 +1187,7 @@
                     }
                     if(data.weekNumber) document.getElementById('weekNumber').value = data.weekNumber;
                     if(data.local) document.getElementById('localSelect').value = data.local;
+                    if(data.packingDate) document.getElementById('packingDate').value = data.packingDate;
 
                     if (data.days) {
                         Object.keys(data.days).forEach(dayId => {
@@ -1205,6 +1235,7 @@
         function executeClearData() {
             localStorage.removeItem(getStorageKey('Trator'));
             localStorage.removeItem(getStorageKey('Colaboradores'));
+            localStorage.removeItem(getStorageKey('SPG Packing'));
 
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
@@ -1326,7 +1357,7 @@
             const solCustomVal = taskData ? taskData.solicitanteCustom : '';
             const opVal = taskData ? taskData.operador : '';
             const opCustomVal = taskData ? taskData.operadorCustom : '';
-            const blocosVal = taskData ? taskData.blocos : '';
+            const blocosVal = taskData ? taskData.blocos : (getSelectedProgramacaoType() === 'SPG Packing' ? 'Packing House' : '');
             const operacoesVal = taskData ? taskData.operacoes : '';
             const statusVal = taskData ? (taskData.status || 'Em Andamento') : 'Em Andamento';
             const rowNumber = taskData ? (taskData.rowNumber || '') : '';
@@ -1344,9 +1375,11 @@
             });
             operadoresHtml += `<option value="Outro" ${opVal === 'Outro' ? 'selected' : ''}>Outro</option>`;
 
+            const isPacking = getSelectedProgramacaoType() === 'SPG Packing';
+
             const taskHtml = `
                 <div class="task-block relative bg-white p-4 rounded-xl border shadow-sm ${rowNumber ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200'}" id="${taskId}" ${rowNumber ? `data-row-number="${rowNumber}" data-row-local="${escapeHtml(rowLocal)}"` : ''}>
-                    
+
                     ${taskCount > 0 ? `
                         <button type="button" onclick="removeTaskBlock('${taskId}')" class="absolute -top-2.5 -right-2.5 bg-red-100 text-red-600 rounded-full p-1.5 hover:bg-red-200 transition-colors shadow-sm z-10">
                             <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -1369,14 +1402,20 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
+                    <!-- Inputs ocultos para manter compatibilidade com queries JS no modo Packing -->
+                    ${isPacking ? `
+                        <select class="task-solicitante hidden"><option value=""></option></select>
+                        <input type="text" class="task-solicitante-custom hidden" value="">
+                    ` : ''}
+
+                    <div class="${isPacking ? '' : 'grid grid-cols-2 gap-3 '}mb-4">
+                        ${!isPacking ? `<div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Solicitante</label>
                             <select class="task-solicitante w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleCustomInput(this); updatePreview()">
                                 ${solicitantesHtml}
                             </select>
                             <input type="text" class="task-solicitante-custom ${solVal === 'Outro' ? '' : 'hidden'} mt-2 w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Nome..." value="${solCustomVal}" oninput="updatePreview()">
-                        </div>
+                        </div>` : ''}
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">${responsavelLabel}</label>
                             ${isColaboradores ? `
@@ -1565,10 +1604,19 @@
             const local = getSelectedProgramacaoType();
             const documentTitle = getProgramacaoDocumentTitle(local);
             const isColaboradores = isColaboradoresProgramacao(local);
+            const isPacking = local === 'SPG Packing';
             const responsavelLabel = getResponsavelLabel(local);
             const responsavelPreviewLabel = getResponsavelPreviewLabel(local);
             
-            document.getElementById('previewHeaderSub').innerText = `${local} • Semana ${weekNumber}`;
+            let subtitleText = `${local} • Semana ${weekNumber}`;
+            if (isPacking) {
+                const dateVal = document.getElementById('packingDate').value;
+                if (dateVal) {
+                    const [, m, d] = dateVal.split('-');
+                    subtitleText += ` • ${d}/${m}`;
+                }
+            }
+            document.getElementById('previewHeaderSub').innerText = subtitleText;
             document.title = `${documentTitle} SPG`;
             const responsavelLabelHeader = document.getElementById('responsavelLabelHeader');
             if (responsavelLabelHeader) responsavelLabelHeader.innerText = responsavelLabel;
@@ -1602,14 +1650,20 @@
                                 ? (() => {
                                     const collaborators = getSelectedCollaborators(block);
                                     const countLabel = collaborators.length ? `(${collaborators.length}) ` : '';
-                                    const collaboratorNames = collaborators.length ? collaborators.join(', ') : '--';
+                                    const collaboratorLines = collaborators.length
+                                        ? collaborators.reduce((acc, name, i) => {
+                                            if (i % 2 === 0) acc.push([]);
+                                            acc[acc.length - 1].push(name);
+                                            return acc;
+                                          }, []).map(pair => pair.join(', ')).join('<br>')
+                                        : '--';
                                     return `
                                         <div class="flex flex-col gap-1.5">
                                             <span class="inline-flex w-fit items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-100 text-brand-700 border border-brand-200 text-[9px] font-black uppercase tracking-[0.2em] leading-none">
                                                 <i data-lucide="users" class="w-3 h-3"></i>
                                                 ${countLabel || ''}Colaboradores
                                             </span>
-                                            <span class="text-brand-700 font-bold leading-relaxed">${collaboratorNames}</span>
+                                            <span class="text-brand-700 font-bold leading-relaxed">${collaboratorLines}</span>
                                         </div>
                                     `;
                                   })()
@@ -1625,12 +1679,12 @@
                             // Monta as linhas da tabela com os responsáveis inclusos
                             tableRows += `
                                 <tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                                    <td class="py-3 px-4 font-bold text-slate-800 bg-slate-50/50">${dayLabel}</td>
-                                    <td class="py-3 px-4 font-black text-slate-700">${blocos || '--'}</td>
+                                    ${isPacking ? '' : `<td class="py-3 px-4 font-bold text-slate-800 bg-slate-50/50">${dayLabel}</td>`}
+                                    ${isPacking ? '' : `<td class="py-3 px-4 font-black text-slate-700">${blocos || '--'}</td>`}
                                     <td class="py-3 px-4">
-                                        <span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sol: <span class="text-brand-700">${finalSolicitante || '--'}</span></span>
+                                        ${!isPacking ? `<span class="block text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sol: <span class="text-brand-700">${finalSolicitante || '--'}</span></span>` : ''}
                                         ${isColaboradores ? `
-                                            <div class="mt-1">
+                                            <div class="${isPacking ? '' : 'mt-1'}">
                                                 ${finalOperador}
                                             </div>
                                         ` : `
@@ -1655,13 +1709,14 @@
                                             return combustivel ? `${combustivel} L` : '--';
                                         })()}
                                     </td>`}
+                                    ${isPacking ? '' : `
                                     <td class="py-3 px-4">
                                         ${(() => {
                                             const statusEl = block.querySelector('.task-status');
                                             const status = statusEl ? statusEl.value : 'Em Andamento';
                                             return statusBadgeHtml(status);
                                         })()}
-                                    </td>
+                                    </td>`}
                                 </tr>
                             `;
                         });
@@ -1677,12 +1732,12 @@
                         <table id="export-preview-table" class="w-full min-w-[700px] text-left border-collapse">
                             <thead>
                                 <tr class="bg-brand-100 text-brand-800 text-[10px] sm:text-[11px] uppercase tracking-widest border-b-2 border-brand-200">
-                                    <th class="p-3 sm:p-4 font-black w-[13%]">Dias</th>
-                                    <th class="p-3 sm:p-4 font-black w-[9%]">Local</th>
-                                    <th class="p-3 sm:p-4 font-black w-[18%]">Responsáveis</th>
-                                    <th class="p-3 sm:p-4 font-black w-[25%]">Operações</th>
+                                    ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[13%]">Dias</th>'}
+                                    ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[9%]">Local</th>'}
+                                    <th class="p-3 sm:p-4 font-black ${isPacking ? 'w-[40%]' : 'w-[18%]'}">Responsáveis</th>
+                                    <th class="p-3 sm:p-4 font-black ${isPacking ? 'w-[60%]' : 'w-[25%]'}">Operações</th>
                                     ${isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[11%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[9%]">Combustível</th>'}
-                                    <th class="p-3 sm:p-4 font-black w-[15%]">Status</th>
+                                    ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[15%]">Status</th>'}
                                 </tr>
                             </thead>
                             <tbody class="text-[13px] sm:text-[14px] text-slate-700">
@@ -1745,7 +1800,7 @@
             const baseWidth = Math.max(
                 Math.ceil(sourceElement.getBoundingClientRect().width || 0),
                 sourceElement.scrollWidth || 0,
-                1100
+                1500
             );
 
             clone.style.width = `${baseWidth}px`;
@@ -1780,7 +1835,8 @@
             }
             const tratorWidths = ['13%', '8%', '18%', '27%', '11%', '9%', '14%'];
             const colaboradoresWidths = ['15%', '10%', '22%', '33%', '20%'];
-            const colWidths = exportHeaders.length >= 7 ? tratorWidths : colaboradoresWidths;
+            const packingWidths = ['40%', '60%'];
+            const colWidths = exportHeaders.length >= 7 ? tratorWidths : (exportHeaders.length === 2 ? packingWidths : colaboradoresWidths);
             colWidths.forEach((w, i) => { if (exportHeaders[i]) exportHeaders[i].style.width = w; });
 
             clone.querySelectorAll('#export-preview-table tbody td').forEach(cell => {
