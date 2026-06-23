@@ -437,12 +437,12 @@
             "Guilherme Ramos",
             "Assis Paulo",
             "Mateus Paulo",
-            "Cláudio Soares",
+            "Cláudio Rodrigues",
             "Regilene Alves"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const dbOperadores = [
-            "Henrique Soares",
+            "Henrique Barros",
             "Mecânico do Trator"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -454,7 +454,7 @@
             "Alesandra Leitão",
             "Fagner Elias",
             "Guilherme Ramos",
-            "Cláudio Soares",
+            "Cláudio Rodrigues",
             "Mateus Paulo",
             "Lucas Soares",
             "Hugo Melo",
@@ -465,7 +465,7 @@
             "Antonio Dheimison",
             "Lucas Rodrigues",
             "Antonio Rodrigues",
-            "Henrique Soares",
+            "Henrique Barros",
             "Erisvaldo Camelo",
             "Silvio de Paula",
             "Regilene Alves",
@@ -1534,8 +1534,8 @@
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tempo Estimado</label>
                             <div class="flex">
-                                <input type="number" step="0.1" class="task-tempo w-full p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 3.4" value="${taskData ? taskData.tempo || '' : ''}" oninput="updatePreview()">
-                                <select class="task-tempo-unit px-2 border border-l-0 rounded-r-xl border-slate-200 text-sm bg-slate-50 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleTempoInput(this); updatePreview()">
+                                <input type="number" step="0.1" class="task-tempo flex-1 min-w-0 p-3 border border-slate-200 rounded-l-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 3.4" value="${taskData ? taskData.tempo || '' : ''}" oninput="updatePreview()">
+                                <select class="task-tempo-unit shrink-0 w-20 px-2 border border-l-0 rounded-r-xl border-slate-200 text-sm bg-slate-50 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleTempoInput(this); updatePreview()">
                                     <option value="H" ${(taskData && taskData.tempoUnit === 'H') ? 'selected' : ''}>H</option>
                                     <option value="min" ${(taskData && taskData.tempoUnit === 'min') ? 'selected' : ''}>min</option>
                                     <option value="Indeterminado" ${(taskData && taskData.tempoUnit === 'Indeterminado') ? 'selected' : ''}>Indeterminado</option>
@@ -1586,12 +1586,12 @@
             const numberInput = selectEl.previousElementSibling;
             if (selectEl.value === 'Indeterminado') {
                 numberInput.classList.add('hidden');
-                selectEl.classList.remove('border-l-0', 'rounded-r-xl');
+                selectEl.classList.remove('border-l-0', 'rounded-r-xl', 'shrink-0', 'w-20');
                 selectEl.classList.add('rounded-xl', 'w-full');
-                numberInput.value = ''; 
+                numberInput.value = '';
             } else {
                 numberInput.classList.remove('hidden');
-                selectEl.classList.add('border-l-0', 'rounded-r-xl');
+                selectEl.classList.add('border-l-0', 'rounded-r-xl', 'shrink-0', 'w-20');
                 selectEl.classList.remove('rounded-xl', 'w-full');
             }
         }
