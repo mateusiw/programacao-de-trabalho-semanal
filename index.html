@@ -134,6 +134,10 @@
                 <i data-lucide="trash-2" class="w-4 h-4 text-slate-500"></i>
                 <span class="hidden sm:inline">Limpar</span>
             </button>
+            <button type="button" id="btnFecharDia" onclick="openClosingDayModal()" class="hidden items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm shadow-green-600/20">
+                <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Fechar Dia</span>
+            </button>
             <button type="button" onclick="confirmBeforeSend()" class="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-brand-500/20 transition-all active:scale-95">
                 <i data-lucide="share-2" class="w-4 h-4"></i>
                 <span class="hidden sm:inline">Gerar e Enviar</span>
@@ -171,6 +175,7 @@
                                 <option value="Trator">Trator</option>
                                 <option value="Colaboradores">Colaboradores</option>
                                 <option value="SPG Packing">SPG Packing</option>
+                                <option value="SPG Estufa">SPG Estufa</option>
                             </select>
                         </div>
                     </div>
@@ -310,6 +315,7 @@
                         <option value="Trator">Trator</option>
                         <option value="Colaboradores">Colaboradores</option>
                         <option value="SPG Packing">SPG Packing</option>
+                        <option value="SPG Estufa">SPG Estufa</option>
                     </select>
                 </div>
             </div>
@@ -324,6 +330,44 @@
             </div>
             <div id="historyEmpty" class="hidden text-center text-slate-400 text-sm italic py-8">Nenhum registro encontrado para o período selecionado.</div>
             <div id="historyResults" class="hidden rounded-xl border border-slate-200 overflow-hidden max-h-[55vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ENCERRAMENTO DO DIA (SPG PACKING) -->
+    <div id="closingDayModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex justify-center items-start backdrop-blur-sm transition-opacity duration-300 overflow-y-auto py-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-[95vw] max-w-3xl my-auto">
+
+            <!-- Cabeçalho do modal -->
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <div class="p-2 bg-green-50 rounded-xl text-green-600">
+                        <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                    </div>
+                    Encerramento do Dia
+                </h3>
+                <button onclick="closeClosingDayModal()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+                </button>
+            </div>
+
+            <!-- SEÇÃO 1: Preenchimento do que foi realizado -->
+            <div class="mb-6">
+                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i data-lucide="pencil" class="w-3.5 h-3.5 text-green-500"></i>
+                    O que cada equipe realizou hoje
+                </h4>
+                <div id="closingInputCards" class="space-y-3 max-h-[45vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+            </div>
+
+            <!-- Botões de ação -->
+            <div class="grid grid-cols-2 gap-3 mt-2">
+                <button onclick="closeClosingDayModal()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors uppercase">
+                    Fechar
+                </button>
+                <button onclick="exportClosingDay()" class="px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-green-600/20 active:scale-95 uppercase flex justify-center items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Exportar Imagem
+                </button>
+            </div>
         </div>
     </div>
 
@@ -393,12 +437,12 @@
             "Guilherme Ramos",
             "Assis Paulo",
             "Mateus Paulo",
-            "Cláudio Rodrigues",
+            "Cláudio Soares",
             "Regilene Alves"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const dbOperadores = [
-            "Henrique Barros",
+            "Henrique Soares",
             "Mecânico do Trator"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -410,7 +454,7 @@
             "Alesandra Leitão",
             "Fagner Elias",
             "Guilherme Ramos",
-            "Cláudio Rodrigues",
+            "Cláudio Soares",
             "Mateus Paulo",
             "Lucas Soares",
             "Hugo Melo",
@@ -421,7 +465,7 @@
             "Antonio Dheimison",
             "Lucas Rodrigues",
             "Antonio Rodrigues",
-            "Henrique Barros",
+            "Henrique Soares",
             "Erisvaldo Camelo",
             "Silvio de Paula",
             "Regilene Alves",
@@ -502,6 +546,11 @@
                 documentTitle: 'Programação do Packing',
                 filePrefix: 'Programacao_Packing',
                 storageKey: 'programacaoPackingSPG_data'
+            },
+            'SPG Estufa': {
+                documentTitle: 'Programação da Estufa',
+                filePrefix: 'Programacao_Estufa',
+                storageKey: 'programacaoEstufaSPG_data'
             }
         };
 
@@ -526,7 +575,7 @@
         }
 
         function isColaboradoresProgramacao(type = getSelectedProgramacaoType()) {
-            return type === 'Colaboradores' || type === 'SPG Packing';
+            return type === 'Colaboradores' || type === 'SPG Packing' || type === 'SPG Estufa';
         }
 
         function getResponsavelLabel(type = getSelectedProgramacaoType()) {
@@ -1057,6 +1106,7 @@
 
             updateDayLabels();
             updatePreview();
+            updateBtnFecharDia();
         });
 
         // ==========================================
@@ -1114,6 +1164,7 @@
         function handleProgramacaoTypeChange() {
             const newType = getSelectedProgramacaoType();
             document.getElementById('packingDateContainer').classList.toggle('hidden', newType !== 'SPG Packing');
+            updateBtnFecharDia();
             if (newType === currentProgramacaoType) {
                 updatePreview();
                 return;
@@ -1239,6 +1290,7 @@
             localStorage.removeItem(getStorageKey('Trator'));
             localStorage.removeItem(getStorageKey('Colaboradores'));
             localStorage.removeItem(getStorageKey('SPG Packing'));
+            localStorage.removeItem(getStorageKey('SPG Estufa'));
 
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
@@ -2155,7 +2207,7 @@
             document.getElementById(`tasks_container_${dayId}`).innerHTML = '';
 
             dayEntries.forEach(({ row }) => {
-                const isColaboradores = newType === 'Colaboradores';
+                const isColaboradores = isColaboradoresProgramacao(newType);
 
                 let solVal = row.programador || '';
                 let solCustomVal = '';
@@ -2209,7 +2261,7 @@
 
         function renderHistoryResults(rows, local) {
             historyRows = rows;
-            const isColaboradores = local === 'Colaboradores';
+            const isColaboradores = isColaboradoresProgramacao(local);
             const resultsEl = document.getElementById('historyResults');
 
             // ── Ordenar do mais recente para o mais antigo ───────────────────
@@ -2335,6 +2387,252 @@
             lucide.createIcons();
         }
 
+        // ==========================================
+        // ENCERRAMENTO DO DIA - SPG PACKING
+        // ==========================================
+
+        function updateBtnFecharDia() {
+            const btn = document.getElementById('btnFecharDia');
+            if (!btn) return;
+            const isPacking = getSelectedProgramacaoType() === 'SPG Packing';
+            btn.classList.toggle('hidden', !isPacking);
+            btn.classList.toggle('flex', isPacking);
+        }
+
+        function openClosingDayModal() {
+            renderClosingInputCards();
+            document.getElementById('closingDayModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeClosingDayModal() {
+            document.getElementById('closingDayModal').classList.add('hidden');
+        }
+
+        function collectPackingBlocks() {
+            const blocks = [];
+            daysOfWeek.forEach(day => {
+                const dayId = day.toLowerCase().split('-')[0];
+                const checkEl = document.getElementById(`check_${dayId}`);
+                if (checkEl && checkEl.checked) {
+                    document.querySelectorAll(`#tasks_container_${dayId} .task-block`).forEach(block => {
+                        blocks.push({
+                            collaborators: getSelectedCollaborators(block),
+                            local: block.querySelector('.task-blocos').value.trim(),
+                            operacoes: block.querySelector('.task-operacoes').value.trim(),
+                            status: block.querySelector('.task-status')?.value || 'Em Andamento',
+                            rowNumber: block.dataset.rowNumber ? parseInt(block.dataset.rowNumber) : null,
+                            rowLocal: block.dataset.rowLocal || 'SPG Packing'
+                        });
+                    });
+                }
+            });
+            return blocks;
+        }
+
+        function renderClosingInputCards() {
+            const container = document.getElementById('closingInputCards');
+            const blocks = collectPackingBlocks();
+
+            if (blocks.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-sm italic text-center py-6 bg-slate-50 rounded-xl border border-slate-200">Nenhum bloco preenchido no formulário.</p>`;
+                return;
+            }
+
+            container.innerHTML = blocks.map((b, i) => {
+                const collabText = b.collaborators.join(', ') || 'Sem colaboradores';
+                const s = STATUS_STYLES[b.status] || STATUS_STYLES['Em Andamento'];
+                const statusStyle = `background:${s.bg};color:${s.color};border-color:${s.border};`;
+
+                return `
+                <div class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Serviço planejado</p>
+                            <p class="text-[13px] font-black text-slate-800 leading-tight">${escapeHtml(b.operacoes) || '—'}</p>
+                            ${b.local ? `<p class="text-[11px] text-slate-500 mt-1"><span class="font-bold">Local:</span> ${escapeHtml(b.local)}</p>` : ''}
+                            <p class="text-[11px] text-slate-500 mt-0.5"><span class="font-bold">Equipe:</span> ${escapeHtml(collabText)}</p>
+                        </div>
+                        <select id="closing_status_${i}" style="${statusStyle}"
+                            class="shrink-0 text-[9px] font-black px-2.5 py-1.5 rounded-full border-2 outline-none cursor-pointer transition-all"
+                            onchange="applyStatusStyle(this); updateClosingPreview()">
+                            <option value="Em Andamento" ${b.status === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
+                            <option value="Concluído" ${b.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                            <option value="Pendente" ${b.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+                            <option value="Adiado" ${b.status === 'Adiado' ? 'selected' : ''}>Adiado</option>
+                        </select>
+                    </div>
+                    <div class="mt-3 bg-green-50 border border-green-200 rounded-xl p-3">
+                        <label class="text-[9px] font-black text-green-700 uppercase tracking-widest flex items-center gap-1.5 mb-2">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                            O que foi realizado
+                        </label>
+                        <textarea id="closing_realizado_${i}"
+                            class="w-full p-3 border border-green-300 rounded-xl text-sm bg-white focus:ring-4 focus:ring-green-500/20 focus:border-green-500 outline-none font-medium text-slate-700 shadow-sm resize-none transition-all"
+                            rows="2"
+                            placeholder="Descreva o que foi realizado pela equipe..."
+                            oninput="updateClosingPreview()">${escapeHtml(b.operacoes)}</textarea>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function buildClosingReportData() {
+            const dateVal = document.getElementById('packingDate').value;
+            const weekNumber = getEffectiveWeekNumber();
+
+            let dateDisplay = '--';
+            let dateShort = '--';
+            if (dateVal) {
+                const [y, m, d] = dateVal.split('-');
+                const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                const weekdayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+                const cap = weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1);
+                dateDisplay = `${cap}, ${d}/${m}/${y}`;
+                dateShort = `${d}/${m}/${y}`;
+            }
+
+            const blocks = collectPackingBlocks();
+            const statusCounts = {};
+            const reportBlocks = blocks.map((b, i) => {
+                const realizadoEl = document.getElementById(`closing_realizado_${i}`);
+                const statusEl = document.getElementById(`closing_status_${i}`);
+                const realizado = realizadoEl ? realizadoEl.value.trim() : b.operacoes;
+                const status = statusEl ? statusEl.value : b.status;
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+                return { ...b, realizado, status };
+            });
+
+            return { dateDisplay, dateShort, weekNumber, reportBlocks, statusCounts };
+        }
+
+        function buildClosingExportHtml({ dateDisplay, dateShort, weekNumber, reportBlocks, statusCounts }) {
+            const tableRows = reportBlocks.map(b => {
+                const collabHtml = b.collaborators.length
+                    ? b.collaborators.reduce((acc, name, i) => {
+                        if (i % 2 === 0) acc.push([]);
+                        acc[acc.length - 1].push(name);
+                        return acc;
+                      }, []).map(pair => pair.join(', ')).join('<br>')
+                    : '<span style="color:#94a3b8;font-style:italic;">—</span>';
+
+                const s = STATUS_STYLES[b.status] || STATUS_STYLES['Em Andamento'];
+                const badgeStyle = `display:inline-block;padding:3px 10px;border-radius:999px;border:1px solid;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;background:${s.bg};color:${s.color};border-color:${s.border};`;
+
+                return `
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:12px 16px;vertical-align:top;">
+                        <span style="display:block;font-size:13px;font-weight:700;color:#1e293b;line-height:1.4;">${escapeHtml(b.operacoes) || '—'}</span>
+                        ${b.local ? `<span style="display:block;font-size:10px;color:#64748b;font-weight:700;margin-top:3px;">${escapeHtml(b.local)}</span>` : ''}
+                    </td>
+                    <td style="padding:8px 12px;vertical-align:top;">
+                        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;">
+                            <span style="display:block;font-size:9px;font-weight:900;color:#16a34a;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">✓ Realizado</span>
+                            <span style="font-size:13px;font-weight:500;color:#334155;line-height:1.5;">${escapeHtml(b.realizado) || '—'}</span>
+                        </div>
+                    </td>
+                    <td style="padding:12px 16px;vertical-align:top;">
+                        <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:10px;font-weight:700;line-height:1.6;">
+                            Colaboradores
+                        </span>
+                        <div style="font-size:12px;font-weight:700;color:#b45309;margin-top:6px;line-height:1.6;">${collabHtml}</div>
+                    </td>
+                    <td style="padding:12px 16px;vertical-align:top;text-align:center;">
+                        <span style="${badgeStyle}">${escapeHtml(b.status)}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <div style="background:#f0f2f5;padding:24px;display:flex;flex-direction:column;gap:16px;width:1500px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+
+                <!-- Cabeçalho -->
+                <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #f1f5f9;padding-bottom:16px;">
+                        <div>
+                            <h1 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:0.12em;line-height:1.2;">Programação de Trabalho</h1>
+                            <h2 style="margin:0;font-size:13px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.06em;">SPG Packing • Encerramento • Sem. ${weekNumber} • ${escapeHtml(dateShort)}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela -->
+                <div style="background:#fff;border-radius:16px;border:1px solid #cbd5e1;overflow:hidden;">
+                    <table style="width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:23%">
+                            <col style="width:32%">
+                            <col style="width:30%">
+                            <col style="width:15%">
+                        </colgroup>
+                        <thead>
+                            <tr style="background:#fef3c7;border-bottom:2px solid #fcd34d;">
+                                <th style="padding:14px 16px;font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:0.12em;text-align:left;">Serviço</th>
+                                <th style="padding:14px 16px;font-size:10px;font-weight:900;color:#15803d;text-transform:uppercase;letter-spacing:0.12em;text-align:left;background:#dcfce7;border-bottom:2px solid #86efac;">O que foi realizado</th>
+                                <th style="padding:14px 16px;font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:0.12em;text-align:left;">Colaboradores</th>
+                                <th style="padding:14px 16px;font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:0.12em;text-align:center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody style="color:#475569;">${tableRows}</tbody>
+                    </table>
+                </div>
+
+                <!-- Rodapé -->
+                <div style="background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;">SPG SEDE</div>
+            </div>`;
+        }
+
+        async function exportClosingDay() {
+            const data = buildClosingReportData();
+            if (!data.reportBlocks.length) {
+                showMessageModal('Aviso', 'Nenhum serviço preenchido para exportar.', 'info');
+                return;
+            }
+
+            const stage = document.createElement('div');
+            stage.style.cssText = 'position:absolute;left:-10000px;top:0;pointer-events:none;overflow:visible;';
+            stage.innerHTML = buildClosingExportHtml(data);
+            document.body.appendChild(stage);
+
+            const filename = `Encerramento_Packing_${(document.getElementById('packingDate').value || 'dia').replace(/-/g, '')}.png`;
+            try {
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: 3, backgroundColor: '#f0f2f5', cacheBust: true });
+                downloadFile(dataUrl, filename);
+            } catch (err) {
+                console.error(err);
+                showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
+            } finally {
+                document.body.removeChild(stage);
+            }
+
+            // Envia "realizado" para o Google Sheets
+            const updates = data.reportBlocks
+                .filter(b => b.rowNumber)
+                .map(b => ({ rowNumber: b.rowNumber, local: b.rowLocal, realizado: b.realizado, status: b.status }));
+
+            if (updates.length > 0) {
+                await sendRealizadoToSheets(updates);
+            } else {
+                showMessageModal('Atenção', 'Encerramento exportado, mas nenhum bloco foi previamente salvo na planilha. Use "Gerar e Enviar" antes de fechar o dia para registrar no Sheets.', 'info');
+            }
+        }
+
+        async function sendRealizadoToSheets(updates) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'updateRealizado', updates })
+                });
+                console.log('Realizado enviado para a planilha.');
+            } catch (err) {
+                console.error('Erro ao enviar realizado:', err);
+            }
+        }
+
         async function updateHistoryStatus(rowNumber, local, newStatus, selectEl, rowIndex) {
             applyStatusStyle(selectEl);
             if (historyRows[rowIndex]) historyRows[rowIndex].status = newStatus;
@@ -2389,7 +2687,7 @@
             // Limpa blocos existentes desse dia e carrega o do histórico
             document.getElementById(`tasks_container_${dayId}`).innerHTML = '';
 
-            const isColaboradores = newType === 'Colaboradores';
+            const isColaboradores = isColaboradoresProgramacao(newType);
 
             let solVal = row.programador || '';
             let solCustomVal = '';
