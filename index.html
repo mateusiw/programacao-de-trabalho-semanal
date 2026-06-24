@@ -202,7 +202,7 @@
         </div>
 
         <!-- COLUNA DA DIREITA: PREVIEW DO RELATÓRIO (FORMATO BIOMETRIA) -->
-        <div class="w-full lg:w-[58%] flex flex-col bg-slate-200/50 p-3 sm:p-4 rounded-3xl border border-slate-300/50 h-max overflow-x-auto min-w-0">
+        <div class="w-full lg:w-[58%] flex flex-col bg-slate-200/50 p-3 sm:p-4 rounded-3xl border border-slate-300/50 min-w-0 lg:sticky lg:top-[72px] lg:self-start lg:max-h-[calc(100vh-88px)] overflow-x-auto overflow-y-auto">
             
             <!-- Wrapper para Exportação (Fundo Cinza Claro #f0f2f5) -->
             <div id="export-wrapper" class="w-full mx-auto p-4 sm:p-6 bg-[#f0f2f5] rounded-3xl flex flex-col gap-4 min-w-0">
@@ -1218,6 +1218,7 @@
                             combustivel: isColaboradores || !combustivelEl ? '' : combustivelEl.value,
                             operacoes: block.querySelector('.task-operacoes').value,
                             status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })(),
+                            estimativa: (() => { const e = block.querySelector('.task-estimativa'); return e ? e.value : ''; })(),
                             rowNumber: block.dataset.rowNumber || '',
                             rowLocal: block.dataset.rowLocal || '',
                         });
@@ -1415,6 +1416,7 @@
             const blocosVal = taskData ? taskData.blocos : (getSelectedProgramacaoType() === 'SPG Packing' ? 'Packing House' : '');
             const operacoesVal = taskData ? taskData.operacoes : '';
             const statusVal = taskData ? (taskData.status || 'Em Andamento') : 'Em Andamento';
+            const estimativaVal = taskData ? (taskData.estimativa || '') : '';
             const rowNumber = taskData ? (taskData.rowNumber || '') : '';
             const rowLocal  = taskData ? (taskData.rowLocal  || '') : '';
 
@@ -1446,14 +1448,18 @@
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bloco ${taskCount + 1}</span>
                             ${rowNumber ? '<span class="text-[9px] font-black text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Editando</span>' : ''}
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap justify-end">
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</label>
-                            <select class="task-status text-[10px] font-black px-3 py-1.5 rounded-full border-2 outline-none cursor-pointer transition-all" onchange="applyStatusStyle(this); updatePreview()">
+                            <select class="task-status text-[10px] font-black px-3 py-1.5 rounded-full border-2 outline-none cursor-pointer transition-all" onchange="applyStatusStyle(this); toggleEstimativaInput(this); updatePreview()">
                                 <option value="Em Andamento" ${statusVal === 'Em Andamento' ? 'selected' : ''}>Em Andamento</option>
                                 <option value="Concluído" ${statusVal === 'Concluído' ? 'selected' : ''}>Concluído</option>
                                 <option value="Pendente" ${statusVal === 'Pendente' ? 'selected' : ''}>Pendente</option>
                                 <option value="Adiado" ${statusVal === 'Adiado' ? 'selected' : ''}>Adiado</option>
                             </select>
+                            <div class="task-estimativa-wrapper ${statusVal === 'Em Andamento' ? '' : 'hidden'} flex items-center gap-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Prev:</label>
+                                <input type="text" class="task-estimativa text-[10px] font-black px-2 py-1.5 rounded-lg border-2 border-amber-300 bg-amber-50 outline-none w-24" placeholder="Ex: 17:00" value="${escapeHtml(estimativaVal)}" oninput="updatePreview(); autoSaveEstimativa(this)">
+                            </div>
                         </div>
                     </div>
 
@@ -1769,7 +1775,13 @@
                                         ${(() => {
                                             const statusEl = block.querySelector('.task-status');
                                             const status = statusEl ? statusEl.value : 'Em Andamento';
-                                            return statusBadgeHtml(status);
+                                            const estimativaEl = block.querySelector('.task-estimativa');
+                                            const estimativa = estimativaEl ? estimativaEl.value.trim() : '';
+                                            const badge = statusBadgeHtml(status);
+                                            if (status === 'Em Andamento' && estimativa) {
+                                                return `<div class="flex items-center gap-1.5 flex-wrap">${badge}<span class="inline-block px-2 py-1 rounded-full border border-slate-300 bg-slate-100 text-slate-600 text-[9px] font-black uppercase tracking-wider whitespace-nowrap">⏱ ${escapeHtml(estimativa)}</span></div>`;
+                                            }
+                                            return badge;
                                         })()}
                                     </td>`}
                                 </tr>
@@ -1933,6 +1945,7 @@
                 const isColaboradores = isColaboradoresProgramacao(local);
                 
                 let inserts = [];
+                let insertBlocks = [];
                 let updates = [];
                 daysOfWeek.forEach(day => {
                     const dayId = day.toLowerCase().split('-')[0];
@@ -1963,7 +1976,8 @@
                                 diaSemana: dayLabel,
                                 blocos: block.querySelector('.task-blocos').value.trim(),
                                 operacoes: block.querySelector('.task-operacoes').value.trim(),
-                                status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })()
+                                status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })(),
+                                estimativa: (() => { const e = block.querySelector('.task-estimativa'); return e ? e.value.trim() : ''; })()
                             };
 
                             if (!isColaboradores) {
@@ -1981,13 +1995,14 @@
                                 updates.push({ ...payloadItem, rowNumber: parseInt(block.dataset.rowNumber), local: block.dataset.rowLocal || local });
                             } else {
                                 inserts.push(payloadItem);
+                                insertBlocks.push(block);
                             }
                         });
                     }
                 });
 
                 if (inserts.length > 0) {
-                    await sendDataToGoogleSheets(inserts);
+                    await sendDataToGoogleSheets(inserts, insertBlocks);
                 }
                 if (updates.length > 0) {
                     await sendUpdatesToGoogleSheets(updates);
@@ -2016,15 +2031,49 @@
             }
         }
 
-        async function sendDataToGoogleSheets(payload) {
+        const _estimativaTimers = new WeakMap();
+        function autoSaveEstimativa(input) {
+            const block = input.closest('.task-block');
+            if (!block || !block.dataset.rowNumber) return;
+            if (_estimativaTimers.has(block)) clearTimeout(_estimativaTimers.get(block));
+            _estimativaTimers.set(block, setTimeout(async () => {
+                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'updateEstimativa',
+                            rowNumber: parseInt(block.dataset.rowNumber),
+                            local: block.dataset.rowLocal,
+                            estimativa: input.value.trim()
+                        })
+                    });
+                } catch (err) {
+                    console.error('Erro ao salvar estimativa:', err);
+                }
+            }, 800));
+        }
+
+        async function sendDataToGoogleSheets(payload, blocks) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
+                const result = await response.json();
+                if (blocks && result.rows) {
+                    result.rows.forEach((row, i) => {
+                        if (blocks[i] && row.rowNumber) {
+                            blocks[i].dataset.rowNumber = row.rowNumber;
+                            blocks[i].dataset.rowLocal = payload[i].local;
+                        }
+                    });
+                }
                 console.log("Dados enviados para a planilha com sucesso!");
             } catch (err) {
                 console.error("Erro ao enviar para a planilha:", err);
@@ -2081,6 +2130,13 @@
             'Pendente':     'bg-orange-100 text-orange-800 border-orange-200',
             'Adiado':       'bg-red-100 text-red-800 border-red-200',
         };
+
+        function toggleEstimativaInput(statusEl) {
+            const wrapper = statusEl.closest('.flex').querySelector('.task-estimativa-wrapper');
+            if (wrapper) {
+                wrapper.classList.toggle('hidden', statusEl.value !== 'Em Andamento');
+            }
+        }
 
         function applyStatusStyle(sel) {
             const s = STATUS_STYLES[sel.value] || STATUS_STYLES['Em Andamento'];
