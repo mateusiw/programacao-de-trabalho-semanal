@@ -286,6 +286,27 @@
         </div>
     </div>
 
+    <!-- MODAL DE CONFIRMAÇÃO DE COLAR DIA -->
+    <div id="pasteDayConfirmModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-11/12 max-w-md transform transition-all scale-100">
+            <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-amber-50 mb-4">
+                <i data-lucide="clipboard-paste" class="h-8 w-8 text-brand-600"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 text-center">Colar Programação?</h3>
+            <p class="text-sm text-slate-500 mt-3 text-center leading-relaxed font-medium">
+                Este dia já possui blocos preenchidos. Deseja substituí-los com a programação copiada?
+            </p>
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="hidePasteDayConfirmModal()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors uppercase">
+                    Cancelar
+                </button>
+                <button onclick="executePasteDay()" class="px-4 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20 active:scale-95 uppercase flex justify-center items-center gap-2">
+                    <i data-lucide="clipboard-paste" class="w-4 h-4"></i> Colar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE HISTÓRICO -->
     <div id="historyModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex justify-center items-start backdrop-blur-sm transition-opacity duration-300 overflow-y-auto py-4">
         <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-[95vw] max-w-6xl my-auto">
@@ -1304,7 +1325,104 @@
             hideClearConfirmModal();
             showMessageModal("Sucesso", "O formulário foi limpo com sucesso.", "success");
         }
-        
+
+        // ==========================================
+        // COPIAR / COLAR PROGRAMAÇÃO DO HISTÓRICO
+        // ==========================================
+
+        let _copiedDayTasks = null;
+        let _pasteDayTarget = null;
+
+        function copyDayFromHistory(dayKey) {
+            const entries = historyRows.filter(r => r.diaSemana === dayKey);
+            if (!entries.length) {
+                showMessageModal('Aviso', 'Nenhuma programação encontrada para esse dia.', 'info');
+                return;
+            }
+
+            const isColaboradores = isColaboradoresProgramacao();
+            _copiedDayTasks = entries.map(row => {
+                let solVal = row.programador || '';
+                let solCustomVal = '';
+                if (solVal && !dbSolicitantes.includes(solVal)) { solCustomVal = solVal; solVal = 'Outro'; }
+
+                let opVal = row.operador || '';
+                let opCustomVal = '';
+                if (!isColaboradores && opVal && !dbOperadores.includes(opVal)) { opCustomVal = opVal; opVal = 'Outro'; }
+
+                let tempo = '', tempoUnit = 'H';
+                if (!isColaboradores && row.tempo) {
+                    if (String(row.tempo) === 'Indeterminado') { tempoUnit = 'Indeterminado'; }
+                    else { const p = String(row.tempo).split(' '); tempo = p[0] || ''; tempoUnit = p[1] || 'H'; }
+                }
+
+                const combustivel = (!isColaboradores && row.combustivel)
+                    ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '';
+
+                return {
+                    solicitante: solVal,
+                    solicitanteCustom: solCustomVal,
+                    operador: opVal,
+                    operadorCustom: opCustomVal,
+                    blocos: row.blocos || '',
+                    operacoes: row.operacoes || '',
+                    tempo,
+                    tempoUnit,
+                    combustivel,
+                    status: 'Em Andamento',
+                    estimativa: '',
+                    rowNumber: '',
+                    rowLocal: '',
+                };
+            });
+
+            closeHistoryModal();
+            updatePasteButtonVisibility();
+            showMessageModal('Copiado', `${_copiedDayTasks.length} programação(ões) de "${dayKey}" copiadas. Abra o card do dia desejado e clique em "Colar programação copiada".`, 'success');
+        }
+
+        function updatePasteButtonVisibility() {
+            document.querySelectorAll('.paste-day-btn').forEach(btn => {
+                btn.classList.toggle('hidden', !_copiedDayTasks);
+            });
+        }
+
+        function pasteDay(dayId) {
+            if (!_copiedDayTasks) return;
+            _pasteDayTarget = dayId;
+            const existingBlocks = document.querySelectorAll(`#tasks_container_${dayId} .task-block`);
+            if (existingBlocks.length > 0) {
+                document.getElementById('pasteDayConfirmModal').classList.remove('hidden');
+                lucide.createIcons();
+            } else {
+                executePasteDay();
+            }
+        }
+
+        function hidePasteDayConfirmModal() {
+            document.getElementById('pasteDayConfirmModal').classList.add('hidden');
+            _pasteDayTarget = null;
+        }
+
+        function executePasteDay() {
+            document.getElementById('pasteDayConfirmModal').classList.add('hidden');
+            const dayId = _pasteDayTarget;
+            _pasteDayTarget = null;
+            if (!dayId || !_copiedDayTasks) return;
+
+            const checkbox = document.getElementById(`check_${dayId}`);
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                toggleDayFields(dayId);
+            }
+
+            const container = document.getElementById(`tasks_container_${dayId}`);
+            container.innerHTML = '';
+            _copiedDayTasks.forEach(task => addTaskBlock(dayId, task));
+            saveToLocalStorage();
+            updatePreview();
+        }
+
         // ==========================================
 
         function getISOWeekNumber(d) {
@@ -1381,6 +1499,9 @@
 
                             <button type="button" onclick="addTaskBlock('${dayId}')" class="w-full mt-4 py-3 border-2 border-dashed border-brand-300 text-brand-600 rounded-xl text-xs font-bold hover:bg-brand-50 transition-colors flex items-center justify-center gap-2">
                                 <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Bloco
+                            </button>
+                            <button type="button" id="paste_btn_${dayId}" onclick="pasteDay('${dayId}')" class="paste-day-btn hidden w-full mt-2 py-2.5 border-2 border-dashed border-blue-300 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
+                                <i data-lucide="clipboard-paste" class="w-4 h-4"></i> Colar programação copiada
                             </button>
 
                         </div>
@@ -2415,6 +2536,10 @@
                         <div class="flex items-center gap-2 flex-wrap justify-end shrink-0">
                             <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${entries.length} prog.</span>
                             ${summary}
+                            <button onclick="copyDayFromHistory('${escapeHtml(dayKey)}')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black rounded-lg transition-colors whitespace-nowrap">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar programação
+                            </button>
                             <button onclick="loadDayIntoForm('${escapeHtml(dayKey)}')"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-black rounded-lg transition-colors whitespace-nowrap shadow-sm shadow-brand-500/20">
                                 <i data-lucide="arrow-up-left" class="w-3.5 h-3.5"></i> Carregar dia
