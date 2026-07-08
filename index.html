@@ -6,8 +6,8 @@
     <title>Programação Semanal SPG</title>
     
     <!-- Ícones e Manifest -->
-    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/512/tractor.png">
-    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/tractor.png">
+    <link rel="icon" type="image/png" href="https://i.imgur.com/mFx521c.png">
+    <link rel="apple-touch-icon" href="https://i.imgur.com/mFx521c.png">
     <meta name="theme-color" content="#f59e0b">
     
     <!-- Bibliotecas Externas -->
@@ -130,6 +130,10 @@
                 <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
                 <span class="hidden sm:inline">Histórico</span>
             </button>
+            <button type="button" onclick="openTeamsModal()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all active:scale-95 border border-slate-200">
+                <i data-lucide="users-round" class="w-4 h-4 text-slate-500"></i>
+                <span class="hidden sm:inline">Equipes</span>
+            </button>
             <button type="button" onclick="confirmClearData()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all active:scale-95 border border-slate-200">
                 <i data-lucide="trash-2" class="w-4 h-4 text-slate-500"></i>
                 <span class="hidden sm:inline">Limpar</span>
@@ -176,6 +180,7 @@
                                 <option value="Colaboradores">Colaboradores</option>
                                 <option value="SPG Packing">SPG Packing</option>
                                 <option value="SPG Estufa">SPG Estufa</option>
+                                <option value="Insumos">Insumos (Adubos/Defensivos)</option>
                             </select>
                         </div>
                     </div>
@@ -337,6 +342,7 @@
                         <option value="Colaboradores">Colaboradores</option>
                         <option value="SPG Packing">SPG Packing</option>
                         <option value="SPG Estufa">SPG Estufa</option>
+                        <option value="Insumos">Insumos (Adubos/Defensivos)</option>
                     </select>
                 </div>
             </div>
@@ -351,6 +357,66 @@
             </div>
             <div id="historyEmpty" class="hidden text-center text-slate-400 text-sm italic py-8">Nenhum registro encontrado para o período selecionado.</div>
             <div id="historyResults" class="hidden rounded-xl border border-slate-200 overflow-hidden max-h-[55vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE EQUIPES -->
+    <div id="teamsModal" class="fixed inset-0 bg-black/60 z-[60] hidden flex justify-center items-start backdrop-blur-sm transition-opacity duration-300 overflow-y-auto py-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 w-[95vw] max-w-2xl my-auto">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-black text-slate-800 flex items-center gap-3">
+                    <div class="p-2 bg-brand-50 rounded-xl text-brand-600">
+                        <i data-lucide="users-round" class="w-5 h-5"></i>
+                    </div>
+                    Equipes
+                </h3>
+                <button onclick="closeTeamsModal()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+                </button>
+            </div>
+
+            <div id="teamsList" class="space-y-3 mb-6 max-h-[35vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+
+            <div class="border-t border-slate-100 pt-5">
+                <h4 id="teamFormTitle" class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Nova Equipe</h4>
+                <div class="mb-4">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Nome da Equipe</label>
+                    <input type="text" id="teamNameInput" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Ex: Adubação Oásis, Adubação SPG Sede...">
+                    <p class="text-[10px] text-slate-400 font-medium mt-1">Use um nome que identifique o local ou a atividade, para facilitar na hora de escolher a equipe certa.</p>
+                </div>
+                <div class="mb-4">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Líder da Equipe</label>
+                    <select id="teamLeaderSelect" onchange="toggleCustomInput(this)" class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer">
+                        <option value="">Selecione...</option>
+                    </select>
+                    <input type="text" id="teamLeaderCustom" class="hidden mt-2 w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Nome do líder...">
+                </div>
+                <div class="mb-4">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Membros da Equipe</label>
+                    <div class="relative">
+                        <input
+                            type="text"
+                            id="teamMemberInput"
+                            class="w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
+                            placeholder="Pesquisar colaborador..."
+                            oninput="handleTeamMemberInput()"
+                            onfocus="handleTeamMemberInput()"
+                            onkeydown="handleTeamMemberInputKeydown(event)"
+                            autocomplete="off"
+                        >
+                        <div id="teamMemberDropdown" class="hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"></div>
+                    </div>
+                    <div id="teamMemberChips" class="flex flex-wrap gap-2 min-h-10 p-2 mt-2 rounded-xl border border-slate-200 bg-white"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="cancelTeamsModal()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors uppercase">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="saveTeamForm()" class="px-4 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20 active:scale-95 uppercase flex justify-center items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Salvar Equipe
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -452,6 +518,16 @@
             "Limpeza de Canteiros",
             "Cobertura de Solo"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        const dbCategoriasInsumos = [
+            "Adubo",
+            "Defensivo",
+            "Produto Químico",
+            "Biológico"
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+        let dbProdutosInsumos = [];
+        let dbAlvosInsumos = [];
 
         const dbSolicitantes = [
             "José Márcio",
@@ -572,6 +648,11 @@
                 documentTitle: 'Programação da Estufa',
                 filePrefix: 'Programacao_Estufa',
                 storageKey: 'programacaoEstufaSPG_data'
+            },
+            Insumos: {
+                documentTitle: 'Programação de Insumos',
+                filePrefix: 'Programacao_Insumos',
+                storageKey: 'programacaoInsumosSPG_data'
             }
         };
 
@@ -596,20 +677,36 @@
         }
 
         function isColaboradoresProgramacao(type = getSelectedProgramacaoType()) {
-            return type === 'Colaboradores' || type === 'SPG Packing' || type === 'SPG Estufa';
+            return type === 'Colaboradores' || type === 'SPG Packing' || type === 'SPG Estufa' || type === 'Insumos';
         }
 
         function getResponsavelLabel(type = getSelectedProgramacaoType()) {
+            if (type === 'Insumos') return 'Quem Vai Aplicar';
             return isColaboradoresProgramacao(type) ? 'Colaboradores' : 'Operador';
         }
 
         function getResponsavelPreviewLabel(type = getSelectedProgramacaoType()) {
+            if (type === 'Insumos') return 'Aplicador(es)';
             return isColaboradoresProgramacao(type) ? 'Colaboradores' : 'Operador';
         }
 
         function getOperacoesList(type = getSelectedProgramacaoType()) {
             if (type === 'SPG Packing') return dbOperacoesPacking;
+            if (type === 'Insumos') return [];
             return isColaboradoresProgramacao(type) ? dbOperacoesColaboradores : dbOperacoesTrator;
+        }
+
+        function resolveInsumoCategoria(isInsumosType, rawCategoria) {
+            if (!isInsumosType || !rawCategoria) return { categoria: '', categoriaCustom: '' };
+            if (dbCategoriasInsumos.includes(rawCategoria)) {
+                return { categoria: rawCategoria, categoriaCustom: '' };
+            }
+            return { categoria: 'Outro', categoriaCustom: rawCategoria };
+        }
+
+        function resolveInsumoAlvos(isInsumosType, rawAlvo) {
+            if (!isInsumosType || !rawAlvo) return [];
+            return rawAlvo.split(',').map(s => s.trim()).filter(Boolean);
         }
 
         function normalizeSelectedCollaborators(value) {
@@ -838,6 +935,689 @@
             }
             closeAllCollaboratorDropdowns();
         });
+
+        // ==========================================
+        // PRODUTOS (INSUMOS) - lista cresce com o uso, vinda do histórico da planilha
+        // ==========================================
+
+        async function loadInsumosSuggestionsFromHistory() {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                const response = await fetch(`${SCRIPT_URL}?local=Insumos`, { redirect: 'follow' });
+                const data = await response.json();
+                if (data.status !== 'sucesso' || !Array.isArray(data.rows)) return;
+
+                const foundProdutos = new Set();
+                const foundAlvos = new Set();
+                data.rows.forEach(row => {
+                    (row.produto || '').split(',').forEach(part => {
+                        const name = part.trim();
+                        if (name) foundProdutos.add(name);
+                    });
+                    (row.alvo || '').split(',').forEach(part => {
+                        const name = part.trim();
+                        if (name) foundAlvos.add(name);
+                    });
+                });
+                dbProdutosInsumos = Array.from(foundProdutos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+                dbAlvosInsumos = Array.from(foundAlvos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            } catch (err) {
+                console.error('Erro ao carregar histórico de produtos/alvos:', err);
+            }
+        }
+
+        function getSelectedProdutos(block) {
+            if (!block) return [];
+            return Array.from(block.querySelectorAll('.task-produto-chip')).map(chip => chip.dataset.name).filter(Boolean);
+        }
+
+        function createProdutoChip(taskId, name, silent = false) {
+            const container = document.querySelector(`#${taskId} .task-produto-chips`);
+            if (!container || !name) return false;
+            const exists = Array.from(container.querySelectorAll('.task-produto-chip')).some(chip => chip.dataset.name === name);
+            if (exists) return false;
+
+            const chip = document.createElement('span');
+            chip.className = 'task-produto-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200';
+            chip.dataset.name = name;
+            chip.innerHTML = `
+                <span>${escapeHtml(name)}</span>
+                <button type="button" class="w-4 h-4 rounded-full bg-emerald-200 text-emerald-700 flex items-center justify-center text-[10px] leading-none hover:bg-emerald-300" onclick="removeProdutoChip(this)">×</button>
+            `;
+            container.appendChild(chip);
+            if (!dbProdutosInsumos.some(n => n.toLowerCase() === name.toLowerCase())) {
+                dbProdutosInsumos.push(name);
+                dbProdutosInsumos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            }
+            if (!silent) updatePreview();
+            return true;
+        }
+
+        function removeProdutoChip(button) {
+            const chip = button.closest('.task-produto-chip');
+            if (chip) {
+                chip.remove();
+                updatePreview();
+            }
+        }
+
+        function getProdutoMatches(query, taskId) {
+            const normalizedQuery = (query || '').trim().toLowerCase();
+            const selected = new Set(getSelectedProdutos(document.getElementById(taskId)));
+            return dbProdutosInsumos.filter(name => {
+                if (selected.has(name)) return false;
+                if (!normalizedQuery) return true;
+                return name.toLowerCase().includes(normalizedQuery);
+            });
+        }
+
+        function renderProdutoDropdown(taskId, query = '') {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const dropdown = taskEl.querySelector('.task-produto-dropdown');
+            if (!dropdown) return;
+
+            const matches = getProdutoMatches(query, taskId);
+            const trimmedQuery = (query || '').trim();
+            const alreadyListed = dbProdutosInsumos.some(n => n.toLowerCase() === trimmedQuery.toLowerCase());
+            const alreadySelected = getSelectedProdutos(taskEl).some(n => n.toLowerCase() === trimmedQuery.toLowerCase());
+
+            let html = matches.map(name => `
+                <button type="button" data-name="${escapeHtml(name)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-emerald-50 transition-colors" onclick="selectProdutoOption(this, '${taskId}')">
+                    <span>${escapeHtml(name)}</span>
+                    <i data-lucide="plus" class="w-4 h-4 text-emerald-500"></i>
+                </button>
+            `).join('');
+
+            if (trimmedQuery && !alreadyListed && !alreadySelected) {
+                html += `
+                    <div class="border-t border-slate-100"></div>
+                    <button type="button" data-name="${escapeHtml(trimmedQuery)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-colors" onclick="selectProdutoOption(this, '${taskId}')">
+                        <span>Adicionar "${escapeHtml(trimmedQuery)}"</span>
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-500"></i>
+                    </button>
+                `;
+            }
+
+            if (!html) {
+                html = `<div class="px-4 py-3 text-xs text-slate-400">Digite o nome do produto...</div>`;
+            }
+
+            dropdown.innerHTML = html;
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideProdutoDropdown(taskId) {
+            const taskEl = document.getElementById(taskId);
+            const dropdown = taskEl ? taskEl.querySelector('.task-produto-dropdown') : null;
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function closeAllProdutoDropdowns() {
+            document.querySelectorAll('.task-produto-dropdown').forEach(dropdown => {
+                dropdown.classList.add('hidden');
+            });
+        }
+
+        function handleProdutoInput(taskId) {
+            const input = document.querySelector(`#${taskId} .task-produto-input`);
+            if (!input) return;
+            closeAllProdutoDropdowns();
+            renderProdutoDropdown(taskId, input.value);
+        }
+
+        function selectProdutoOption(button, taskId) {
+            const name = button?.dataset?.name;
+            if (!name) return;
+            if (createProdutoChip(taskId, name)) {
+                const input = document.querySelector(`#${taskId} .task-produto-input`);
+                if (input) input.value = '';
+                hideProdutoDropdown(taskId);
+            }
+        }
+
+        function handleProdutoInputKeydown(event, taskId) {
+            const input = document.querySelector(`#${taskId} .task-produto-input`);
+            if (!input) return;
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const value = input.value.trim();
+                if (value && createProdutoChip(taskId, value)) {
+                    input.value = '';
+                    hideProdutoDropdown(taskId);
+                }
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                hideProdutoDropdown(taskId);
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('.task-produto-input') || event.target.closest('.task-produto-dropdown')) {
+                return;
+            }
+            closeAllProdutoDropdowns();
+        });
+
+        // ==========================================
+        // ALVO / MOTIVO (INSUMOS) - lista cresce com o uso, vinda do histórico da planilha
+        // ==========================================
+
+        function getSelectedAlvos(block) {
+            if (!block) return [];
+            return Array.from(block.querySelectorAll('.task-alvo-chip')).map(chip => chip.dataset.name).filter(Boolean);
+        }
+
+        function createAlvoChip(taskId, name, silent = false) {
+            const container = document.querySelector(`#${taskId} .task-alvo-chips`);
+            if (!container || !name) return false;
+            const exists = Array.from(container.querySelectorAll('.task-alvo-chip')).some(chip => chip.dataset.name === name);
+            if (exists) return false;
+
+            const chip = document.createElement('span');
+            chip.className = 'task-alvo-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-sky-100 text-sky-800 text-xs font-bold border border-sky-200';
+            chip.dataset.name = name;
+            chip.innerHTML = `
+                <span>${escapeHtml(name)}</span>
+                <button type="button" class="w-4 h-4 rounded-full bg-sky-200 text-sky-700 flex items-center justify-center text-[10px] leading-none hover:bg-sky-300" onclick="removeAlvoChip(this)">×</button>
+            `;
+            container.appendChild(chip);
+            if (!dbAlvosInsumos.some(n => n.toLowerCase() === name.toLowerCase())) {
+                dbAlvosInsumos.push(name);
+                dbAlvosInsumos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            }
+            if (!silent) updatePreview();
+            return true;
+        }
+
+        function removeAlvoChip(button) {
+            const chip = button.closest('.task-alvo-chip');
+            if (chip) {
+                chip.remove();
+                updatePreview();
+            }
+        }
+
+        function getAlvoMatches(query, taskId) {
+            const normalizedQuery = (query || '').trim().toLowerCase();
+            const selected = new Set(getSelectedAlvos(document.getElementById(taskId)));
+            return dbAlvosInsumos.filter(name => {
+                if (selected.has(name)) return false;
+                if (!normalizedQuery) return true;
+                return name.toLowerCase().includes(normalizedQuery);
+            });
+        }
+
+        function renderAlvoDropdown(taskId, query = '') {
+            const taskEl = document.getElementById(taskId);
+            if (!taskEl) return;
+            const dropdown = taskEl.querySelector('.task-alvo-dropdown');
+            if (!dropdown) return;
+
+            const matches = getAlvoMatches(query, taskId);
+            const trimmedQuery = (query || '').trim();
+            const alreadyListed = dbAlvosInsumos.some(n => n.toLowerCase() === trimmedQuery.toLowerCase());
+            const alreadySelected = getSelectedAlvos(taskEl).some(n => n.toLowerCase() === trimmedQuery.toLowerCase());
+
+            let html = matches.map(name => `
+                <button type="button" data-name="${escapeHtml(name)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-sky-50 transition-colors" onclick="selectAlvoOption(this, '${taskId}')">
+                    <span>${escapeHtml(name)}</span>
+                    <i data-lucide="plus" class="w-4 h-4 text-sky-500"></i>
+                </button>
+            `).join('');
+
+            if (trimmedQuery && !alreadyListed && !alreadySelected) {
+                html += `
+                    <div class="border-t border-slate-100"></div>
+                    <button type="button" data-name="${escapeHtml(trimmedQuery)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-sky-700 hover:bg-sky-50 transition-colors" onclick="selectAlvoOption(this, '${taskId}')">
+                        <span>Adicionar "${escapeHtml(trimmedQuery)}"</span>
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-sky-500"></i>
+                    </button>
+                `;
+            }
+
+            if (!html) {
+                html = `<div class="px-4 py-3 text-xs text-slate-400">Digite o alvo ou motivo...</div>`;
+            }
+
+            dropdown.innerHTML = html;
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideAlvoDropdown(taskId) {
+            const taskEl = document.getElementById(taskId);
+            const dropdown = taskEl ? taskEl.querySelector('.task-alvo-dropdown') : null;
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function closeAllAlvoDropdowns() {
+            document.querySelectorAll('.task-alvo-dropdown').forEach(dropdown => {
+                dropdown.classList.add('hidden');
+            });
+        }
+
+        function handleAlvoInput(taskId) {
+            const input = document.querySelector(`#${taskId} .task-alvo-input`);
+            if (!input) return;
+            closeAllAlvoDropdowns();
+            renderAlvoDropdown(taskId, input.value);
+        }
+
+        function selectAlvoOption(button, taskId) {
+            const name = button?.dataset?.name;
+            if (!name) return;
+            if (createAlvoChip(taskId, name)) {
+                const input = document.querySelector(`#${taskId} .task-alvo-input`);
+                if (input) input.value = '';
+                hideAlvoDropdown(taskId);
+            }
+        }
+
+        function handleAlvoInputKeydown(event, taskId) {
+            const input = document.querySelector(`#${taskId} .task-alvo-input`);
+            if (!input) return;
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const value = input.value.trim();
+                if (value && createAlvoChip(taskId, value)) {
+                    input.value = '';
+                    hideAlvoDropdown(taskId);
+                }
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                hideAlvoDropdown(taskId);
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('.task-alvo-input') || event.target.closest('.task-alvo-dropdown')) {
+                return;
+            }
+            closeAllAlvoDropdowns();
+        });
+
+        // ==========================================
+        // EQUIPES (LÍDER + MEMBROS)
+        // ==========================================
+
+        const TEAMS_STORAGE_KEY = 'programacaoEquipesSPG_data';
+        let teams = [];
+        let editingTeamIndex = null;
+
+        function loadTeamsFromCache() {
+            try {
+                const saved = localStorage.getItem(TEAMS_STORAGE_KEY);
+                teams = saved ? JSON.parse(saved) : [];
+                if (!Array.isArray(teams)) teams = [];
+            } catch (e) {
+                teams = [];
+            }
+        }
+
+        async function loadTeamsFromSheet() {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                const response = await fetch(`${SCRIPT_URL}?local=Equipes`, { redirect: 'follow' });
+                const data = await response.json();
+                if (data.status !== 'sucesso' || !Array.isArray(data.rows)) return false;
+
+                teams = data.rows
+                    .filter(row => row.programador)
+                    .map(row => ({
+                        name: row.blocos || '',
+                        leader: row.programador,
+                        members: row.operador ? row.operador.split(',').map(s => s.trim()).filter(Boolean) : [],
+                        rowNumber: row.rowNumber
+                    }));
+                persistTeams();
+                renderTeamsList();
+                refreshTeamQuickButtonsInAllBlocks();
+                return true;
+            } catch (err) {
+                console.error('Erro ao carregar equipes da planilha:', err);
+                return false;
+            }
+        }
+
+        async function loadTeams() {
+            loadTeamsFromCache();
+            await loadTeamsFromSheet();
+        }
+
+        function persistTeams() {
+            localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+        }
+
+        function getTeamDisplayName(team) {
+            return team.name && team.name.trim() ? team.name.trim() : `Equipe ${team.leader}`;
+        }
+
+        function renderTeamQuickButtonsHtml(taskId) {
+            if (!teams.length) return `<div class="team-quick-buttons" data-task-id="${taskId}"></div>`;
+            return `<div class="team-quick-buttons flex flex-wrap gap-1.5" data-task-id="${taskId}">
+                ${teams.map((team, index) => `
+                    <button type="button" onclick="addTeamToTask('${taskId}', ${index})" title="Líder: ${escapeHtml(team.leader)}" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-brand-100 border border-slate-200 hover:border-brand-300 text-slate-600 hover:text-brand-700 text-[10px] font-bold transition-colors">
+                        <i data-lucide="users-round" class="w-3 h-3"></i> ${escapeHtml(getTeamDisplayName(team))}
+                    </button>
+                `).join('')}
+            </div>`;
+        }
+
+        function refreshTeamQuickButtonsInAllBlocks() {
+            document.querySelectorAll('.team-quick-buttons').forEach(el => {
+                const taskId = el.dataset.taskId;
+                if (taskId) el.outerHTML = renderTeamQuickButtonsHtml(taskId);
+            });
+            lucide.createIcons();
+        }
+
+        function addTeamToTask(taskId, teamIndex) {
+            const team = teams[teamIndex];
+            if (!team) return;
+            const names = [team.leader, ...team.members].filter(Boolean);
+            names.forEach(name => createCollaboratorChip(taskId, name, true));
+            updateCollaboratorCounter(taskId);
+            updatePreview();
+        }
+
+        function openTeamsModal() {
+            populateTeamLeaderSelect();
+            renderTeamsList();
+            cancelTeamEdit();
+            document.getElementById('teamsModal').classList.remove('hidden');
+            lucide.createIcons();
+            loadTeamsFromSheet();
+        }
+
+        function closeTeamsModal() {
+            document.getElementById('teamsModal').classList.add('hidden');
+        }
+
+        function cancelTeamsModal() {
+            cancelTeamEdit();
+            closeTeamsModal();
+        }
+
+        function populateTeamLeaderSelect() {
+            const select = document.getElementById('teamLeaderSelect');
+            let html = '<option value="">Selecione...</option>';
+            dbColaboradores.forEach(name => {
+                html += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+            });
+            html += '<option value="Outro">Outro</option>';
+            select.innerHTML = html;
+        }
+
+        function renderTeamsList() {
+            const container = document.getElementById('teamsList');
+            if (!teams.length) {
+                container.innerHTML = '<div class="text-center text-slate-400 text-sm italic py-6">Nenhuma equipe cadastrada ainda.</div>';
+                return;
+            }
+            container.innerHTML = teams.map((team, index) => `
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="font-black text-slate-800 text-sm">${escapeHtml(getTeamDisplayName(team))}</span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="startEditTeam(${index})" class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors">
+                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button type="button" onclick="deleteTeam(${index})" class="p-1.5 rounded-lg hover:bg-red-100 text-red-500 transition-colors">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-100 text-brand-700 border border-brand-200 text-[9px] font-black uppercase tracking-[0.2em]">
+                            <i data-lucide="star" class="w-3 h-3"></i> Líder
+                        </span>
+                        <span class="font-bold text-slate-700 text-sm">${escapeHtml(team.leader)}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${team.members.length
+                            ? team.members.map(m => `<span class="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-[11px] font-bold">${escapeHtml(m)}</span>`).join('')
+                            : '<span class="text-[11px] text-slate-400 italic">Sem membros adicionais</span>'}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function getTeamLeaderValue() {
+            const select = document.getElementById('teamLeaderSelect');
+            const custom = document.getElementById('teamLeaderCustom');
+            return select.value === 'Outro' ? custom.value.trim() : select.value;
+        }
+
+        function getTeamMembersFromChips() {
+            return Array.from(document.querySelectorAll('#teamMemberChips .team-member-chip')).map(chip => chip.dataset.name).filter(Boolean);
+        }
+
+        function createTeamMemberChip(name) {
+            if (!name) return false;
+            if (name === getTeamLeaderValue()) return false;
+            if (getTeamMembersFromChips().includes(name)) return false;
+
+            const container = document.getElementById('teamMemberChips');
+            const chip = document.createElement('span');
+            chip.className = 'team-member-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-brand-100 text-brand-800 text-xs font-bold border border-brand-200';
+            chip.dataset.name = name;
+            chip.innerHTML = `
+                <span>${escapeHtml(name)}</span>
+                <button type="button" class="w-4 h-4 rounded-full bg-brand-200 text-brand-700 flex items-center justify-center text-[10px] leading-none hover:bg-brand-300" onclick="this.closest('.team-member-chip').remove()">×</button>
+            `;
+            container.appendChild(chip);
+            return true;
+        }
+
+        function getTeamMemberMatches(query) {
+            const normalizedQuery = (query || '').trim().toLowerCase();
+            const selected = new Set(getTeamMembersFromChips());
+            const leader = getTeamLeaderValue();
+            return dbColaboradores.filter(name => {
+                if (name === leader) return false;
+                if (selected.has(name)) return false;
+                if (!normalizedQuery) return true;
+                return name.toLowerCase().includes(normalizedQuery);
+            });
+        }
+
+        function renderTeamMemberDropdown(query = '') {
+            const dropdown = document.getElementById('teamMemberDropdown');
+            const matches = getTeamMemberMatches(query);
+            if (!matches.length) {
+                dropdown.innerHTML = `<div class="px-4 py-3 text-xs text-slate-400">Nenhum colaborador encontrado.</div>`;
+                dropdown.classList.remove('hidden');
+                return;
+            }
+            dropdown.innerHTML = matches.map(name => `
+                <button type="button" data-name="${escapeHtml(name)}" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-brand-50 transition-colors" onclick="selectTeamMemberOption(this)">
+                    <span>${escapeHtml(name)}</span>
+                    <i data-lucide="plus" class="w-4 h-4 text-brand-500"></i>
+                </button>
+            `).join('');
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideTeamMemberDropdown() {
+            const dropdown = document.getElementById('teamMemberDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function handleTeamMemberInput() {
+            renderTeamMemberDropdown(document.getElementById('teamMemberInput').value);
+        }
+
+        function selectTeamMemberOption(button) {
+            const name = button?.dataset?.name;
+            if (!name) return;
+            if (createTeamMemberChip(name)) {
+                document.getElementById('teamMemberInput').value = '';
+                hideTeamMemberDropdown();
+            }
+        }
+
+        function handleTeamMemberInputKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const matches = getTeamMemberMatches(document.getElementById('teamMemberInput').value);
+                if (matches.length > 0) {
+                    createTeamMemberChip(matches[0]);
+                    document.getElementById('teamMemberInput').value = '';
+                    hideTeamMemberDropdown();
+                }
+                return;
+            }
+            if (event.key === 'Escape') {
+                hideTeamMemberDropdown();
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('#teamMemberInput') || event.target.closest('#teamMemberDropdown')) {
+                return;
+            }
+            hideTeamMemberDropdown();
+        });
+
+        function cancelTeamEdit() {
+            editingTeamIndex = null;
+            const nameInput = document.getElementById('teamNameInput');
+            if (nameInput) nameInput.value = '';
+            const select = document.getElementById('teamLeaderSelect');
+            const custom = document.getElementById('teamLeaderCustom');
+            if (select) select.value = '';
+            if (custom) { custom.classList.add('hidden'); custom.value = ''; }
+            const chips = document.getElementById('teamMemberChips');
+            if (chips) chips.innerHTML = '';
+            const input = document.getElementById('teamMemberInput');
+            if (input) input.value = '';
+            hideTeamMemberDropdown();
+            const title = document.getElementById('teamFormTitle');
+            if (title) title.innerText = 'Nova Equipe';
+        }
+
+        function startEditTeam(index) {
+            const team = teams[index];
+            if (!team) return;
+            editingTeamIndex = index;
+
+            const nameInput = document.getElementById('teamNameInput');
+            if (nameInput) nameInput.value = team.name || '';
+
+            const select = document.getElementById('teamLeaderSelect');
+            const custom = document.getElementById('teamLeaderCustom');
+            if (dbColaboradores.includes(team.leader)) {
+                select.value = team.leader;
+                custom.classList.add('hidden');
+                custom.value = '';
+            } else {
+                select.value = 'Outro';
+                custom.classList.remove('hidden');
+                custom.value = team.leader;
+            }
+
+            document.getElementById('teamMemberChips').innerHTML = '';
+            team.members.forEach(name => createTeamMemberChip(name));
+
+            document.getElementById('teamFormTitle').innerText = `Editando: ${getTeamDisplayName(team)}`;
+        }
+
+        async function deleteTeam(index) {
+            const team = teams[index];
+            if (!team) return;
+
+            teams.splice(index, 1);
+            persistTeams();
+            renderTeamsList();
+            refreshTeamQuickButtonsInAllBlocks();
+            if (editingTeamIndex === index) cancelTeamEdit();
+
+            if (team.rowNumber) {
+                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+                try {
+                    const response = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'deleteTeam', rowNumber: team.rowNumber })
+                    });
+                    const result = await response.json();
+                    if (result.status !== 'sucesso') {
+                        console.error('Erro ao excluir equipe na planilha:', result.mensagem);
+                        showMessageModal('Atenção', `A equipe foi removida do app, mas não foi possível remover da planilha: ${result.mensagem || 'erro desconhecido'}.`, 'error');
+                        return;
+                    }
+                    // Recarrega da planilha para corrigir os números de linha das equipes restantes.
+                    await loadTeamsFromSheet();
+                } catch (err) {
+                    console.error('Erro ao excluir equipe na planilha:', err);
+                    showMessageModal('Atenção', 'A equipe foi removida do app, mas não foi possível confirmar a remoção na planilha.', 'error');
+                }
+            }
+        }
+
+        async function saveTeamForm() {
+            const leader = getTeamLeaderValue();
+            if (!leader) {
+                showMessageModal('Aviso', 'Selecione ou informe o nome do líder da equipe.', 'info');
+                return;
+            }
+            const members = getTeamMembersFromChips();
+            const name = document.getElementById('teamNameInput').value.trim();
+            const existingRowNumber = editingTeamIndex !== null ? (teams[editingTeamIndex].rowNumber || null) : null;
+            const team = { name, leader, members, rowNumber: existingRowNumber };
+
+            if (editingTeamIndex !== null) {
+                teams[editingTeamIndex] = team;
+            } else {
+                teams.push(team);
+            }
+            persistTeams();
+            renderTeamsList();
+            refreshTeamQuickButtonsInAllBlocks();
+            cancelTeamEdit();
+            showMessageModal('Sucesso', 'Equipe salva com sucesso.', 'success');
+
+            try {
+                if (team.rowNumber) {
+                    // Equipe já existe na planilha: atualiza só as colunas de líder/membros, sem duplicar linha.
+                    await sendTeamUpdateToGoogleSheets(team);
+                } else {
+                    const result = await sendDataToGoogleSheets([{
+                        local: 'Equipes',
+                        semana: '',
+                        programador: team.leader,
+                        operador: team.members.join(', '),
+                        diaSemana: '',
+                        blocos: team.name || '',
+                        tempo: '',
+                        combustivel: '',
+                        operacoes: '',
+                        status: '',
+                        estimativa: ''
+                    }]);
+                    if (result && Array.isArray(result.rows) && result.rows[0] && result.rows[0].rowNumber) {
+                        team.rowNumber = result.rows[0].rowNumber;
+                        persistTeams();
+                    } else {
+                        console.error('Resposta inesperada ao salvar equipe na planilha:', result);
+                        showMessageModal('Atenção', 'A equipe foi salva no app, mas não foi possível confirmar o registro na planilha. Da próxima vez que editar essa equipe, ela pode ser gravada como uma linha nova. Verifique se o Apps Script foi reimplantado com a versão mais recente.', 'error');
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao salvar equipe na planilha:', err);
+            }
+        }
 
         // Dicionário de Autocorreção Inteligente para Operações
         const spellCheckDict = {
@@ -1120,6 +1900,8 @@
             document.getElementById('packingDateContainer').classList.toggle('hidden', currentProgramacaoType !== 'SPG Packing');
             if (!packingDateEl.value) packingDateEl.value = today.toISOString().split('T')[0];
 
+            loadTeams();
+            loadInsumosSuggestionsFromHistory();
             renderDaysForm();
 
             // Carregar dados salvos do localStorage
@@ -1201,6 +1983,7 @@
         
         function saveToLocalStorage(type = currentProgramacaoType) {
             const isColaboradores = isColaboradoresProgramacao(type);
+            const isInsumos = type === 'Insumos';
             const data = {
                 weekMode: document.getElementById('weekModeSelect').value,
                 weekNumber: document.getElementById('weekNumber').value,
@@ -1238,6 +2021,10 @@
                             tempoUnit: isColaboradores || !tempoUnitEl ? '' : tempoUnitEl.value,
                             combustivel: isColaboradores || !combustivelEl ? '' : combustivelEl.value,
                             operacoes: block.querySelector('.task-operacoes').value,
+                            categoria: isInsumos ? (block.querySelector('.task-categoria')?.value || '') : '',
+                            categoriaCustom: isInsumos ? (block.querySelector('.task-categoria-custom')?.value || '') : '',
+                            produtos: isInsumos ? getSelectedProdutos(block) : [],
+                            alvos: isInsumos ? getSelectedAlvos(block) : [],
                             status: (() => { const s = block.querySelector('.task-status'); return s ? s.value : 'Em Andamento'; })(),
                             estimativa: (() => { const e = block.querySelector('.task-estimativa'); return e ? e.value : ''; })(),
                             rowNumber: block.dataset.rowNumber || '',
@@ -1313,6 +2100,7 @@
             localStorage.removeItem(getStorageKey('Colaboradores'));
             localStorage.removeItem(getStorageKey('SPG Packing'));
             localStorage.removeItem(getStorageKey('SPG Estufa'));
+            localStorage.removeItem(getStorageKey('Insumos'));
 
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
@@ -1341,6 +2129,7 @@
             }
 
             const isColaboradores = isColaboradoresProgramacao();
+            const isInsumos = getSelectedProgramacaoType() === 'Insumos';
             _copiedDayTasks = entries.map(row => {
                 let solVal = row.programador || '';
                 let solCustomVal = '';
@@ -1359,6 +2148,8 @@
                 const combustivel = (!isColaboradores && row.combustivel)
                     ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '';
 
+                const { categoria: categoriaVal, categoriaCustom: categoriaCustomVal } = resolveInsumoCategoria(isInsumos, row.categoria);
+
                 return {
                     solicitante: solVal,
                     solicitanteCustom: solCustomVal,
@@ -1369,6 +2160,10 @@
                     tempo,
                     tempoUnit,
                     combustivel,
+                    categoria: categoriaVal,
+                    categoriaCustom: categoriaCustomVal,
+                    produtos: isInsumos && row.produto ? row.produto.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    alvos: resolveInsumoAlvos(isInsumos, row.alvo),
                     status: 'Em Andamento',
                     estimativa: '',
                     rowNumber: '',
@@ -1554,6 +2349,17 @@
             operadoresHtml += `<option value="Outro" ${opVal === 'Outro' ? 'selected' : ''}>Outro</option>`;
 
             const isPacking = getSelectedProgramacaoType() === 'SPG Packing';
+            const isInsumos = getSelectedProgramacaoType() === 'Insumos';
+            const categoriaVal = taskData ? (taskData.categoria || '') : '';
+            const categoriaCustomVal = taskData ? (taskData.categoriaCustom || '') : '';
+            const selectedProdutos = taskData ? (taskData.produtos || []) : [];
+            const selectedAlvos = taskData ? (taskData.alvos || []) : [];
+
+            let categoriasHtml = '<option value="">Selecione...</option>';
+            dbCategoriasInsumos.forEach(nome => {
+                categoriasHtml += `<option value="${nome}" ${categoriaVal === nome ? 'selected' : ''}>${nome}</option>`;
+            });
+            categoriasHtml += `<option value="Outro" ${categoriaVal === 'Outro' ? 'selected' : ''}>Outro</option>`;
 
             const taskHtml = `
                 <div class="task-block relative bg-white p-4 rounded-xl border shadow-sm ${rowNumber ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200'}" id="${taskId}" ${rowNumber ? `data-row-number="${rowNumber}" data-row-local="${escapeHtml(rowLocal)}"` : ''}>
@@ -1602,8 +2408,7 @@
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">${responsavelLabel}</label>
                             ${isColaboradores ? `
                                 <div class="space-y-2">
-                                    <div class="flex items-end justify-between gap-3">
-                                    </div>
+                                    ${renderTeamQuickButtonsHtml(taskId)}
                                     <div class="relative">
                                         <input
                                             type="text"
@@ -1656,7 +2461,66 @@
                         <input type="text" class="task-blocos w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold text-slate-700 shadow-sm" placeholder="Ex: 5" value="${blocosVal}" oninput="updatePreview()">
                     </div>
 
-                    ${isColaboradores ? '' : `
+                    ${isInsumos ? `
+                    <div class="mb-4 space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Categoria</label>
+                                <select class="task-categoria w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleCustomInput(this); updatePreview()">
+                                    ${categoriasHtml}
+                                </select>
+                                <input type="text" class="task-categoria-custom ${categoriaVal === 'Outro' ? '' : 'hidden'} mt-2 w-full p-3 border border-brand-300 bg-brand-50 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm" placeholder="Digite a categoria..." value="${escapeHtml(categoriaCustomVal)}" oninput="updatePreview()">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Alvo / Motivo</label>
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        class="task-alvo-input w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
+                                        placeholder="Pesquisar ou digitar alvo/motivo..."
+                                        oninput="handleAlvoInput('${taskId}')"
+                                        onfocus="handleAlvoInput('${taskId}')"
+                                        onkeydown="handleAlvoInputKeydown(event, '${taskId}')"
+                                        autocomplete="off"
+                                    >
+                                    <div class="task-alvo-dropdown hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"></div>
+                                </div>
+                                <div class="task-alvo-chips flex flex-wrap gap-2 min-h-10 p-2 mt-2 rounded-xl border border-slate-200 bg-white">
+                                    ${selectedAlvos.map(nome => `
+                                        <span class="task-alvo-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-sky-100 text-sky-800 text-xs font-bold border border-sky-200" data-name="${escapeHtml(nome)}">
+                                            <span>${escapeHtml(nome)}</span>
+                                            <button type="button" class="w-4 h-4 rounded-full bg-sky-200 text-sky-700 flex items-center justify-center text-[10px] leading-none hover:bg-sky-300" onclick="removeAlvoChip(this)">×</button>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Produto(s) Utilizado(s)</label>
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    class="task-produto-input w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm"
+                                    placeholder="Pesquisar ou digitar produto..."
+                                    oninput="handleProdutoInput('${taskId}')"
+                                    onfocus="handleProdutoInput('${taskId}')"
+                                    onkeydown="handleProdutoInputKeydown(event, '${taskId}')"
+                                    autocomplete="off"
+                                >
+                                <div class="task-produto-dropdown hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"></div>
+                            </div>
+                            <div class="task-produto-chips flex flex-wrap gap-2 min-h-10 p-2 mt-2 rounded-xl border border-slate-200 bg-white">
+                                ${selectedProdutos.map(nome => `
+                                    <span class="task-produto-chip inline-flex items-center gap-2 px-3 py-2 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200" data-name="${escapeHtml(nome)}">
+                                        <span>${escapeHtml(nome)}</span>
+                                        <button type="button" class="w-4 h-4 rounded-full bg-emerald-200 text-emerald-700 flex items-center justify-center text-[10px] leading-none hover:bg-emerald-300" onclick="removeProdutoChip(this)">×</button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-medium">Digite o nome e pressione Enter, ou escolha um produto já usado antes.</p>
+                        </div>
+                    </div>
+                    ` : (isColaboradores ? '' : `
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tempo Estimado</label>
@@ -1677,16 +2541,16 @@
                             </div>
                         </div>
                     </div>
-                    `}
+                    `)}
 
                     <div>
                         <div class="flex justify-between items-end mb-1.5">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Operações</label>
-                            <select onchange="addSelectedOperacaoToTask(this, '${taskId}')" class="text-[10px] py-1 px-2 bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 border border-slate-200 rounded outline-none cursor-pointer font-bold max-w-[150px] truncate transition-colors">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">${isInsumos ? 'Observações' : 'Operações'}</label>
+                            ${isInsumos ? '' : `<select onchange="addSelectedOperacaoToTask(this, '${taskId}')" class="text-[10px] py-1 px-2 bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 border border-slate-200 rounded outline-none cursor-pointer font-bold max-w-[150px] truncate transition-colors">
                                 ${options}
-                            </select>
+                            </select>`}
                         </div>
-                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="Descreva as operações..." spellcheck="true" autocorrect="on" autocapitalize="sentences" lang="pt-BR" oninput="autoCorrectText(this); updatePreview()">${operacoesVal}</textarea>
+                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="${isInsumos ? 'Observações adicionais (opcional)...' : 'Descreva as operações...'}" spellcheck="true" autocorrect="on" autocapitalize="sentences" lang="pt-BR" oninput="autoCorrectText(this); updatePreview()">${operacoesVal}</textarea>
                     </div>
                 </div>
             `;
@@ -1787,6 +2651,7 @@
             const documentTitle = getProgramacaoDocumentTitle(local);
             const isColaboradores = isColaboradoresProgramacao(local);
             const isPacking = local === 'SPG Packing';
+            const isInsumos = local === 'Insumos';
             const responsavelLabel = getResponsavelLabel(local);
             const responsavelPreviewLabel = getResponsavelPreviewLabel(local);
             
@@ -1874,7 +2739,25 @@
                                         `}
                                     </td>
                                     <td class="py-3 px-4 font-medium text-slate-700 leading-relaxed">${operacoes || '--'}</td>
-                                    ${isColaboradores ? '' : `
+                                    ${isInsumos ? (() => {
+                                        const categoriaEl = block.querySelector('.task-categoria');
+                                        let categoria = categoriaEl ? categoriaEl.value : '';
+                                        if (categoria === 'Outro') {
+                                            const categoriaCustomEl = block.querySelector('.task-categoria-custom');
+                                            categoria = categoriaCustomEl ? categoriaCustomEl.value.trim() : '';
+                                        }
+                                        const produtos = getSelectedProdutos(block);
+                                        const alvos = getSelectedAlvos(block);
+                                        const categoriaBadge = categoria
+                                            ? `<span class="inline-flex w-fit items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase tracking-wider mb-1">${escapeHtml(categoria)}</span><br>`
+                                            : '';
+                                        const produtosText = produtos.length ? produtos.map(p => escapeHtml(p)).join(', ') : '--';
+                                        const alvosText = alvos.length ? alvos.map(a => escapeHtml(a)).join(', ') : '--';
+                                        return `
+                                            <td class="py-3 px-4 font-medium text-slate-700 leading-relaxed">${categoriaBadge}${produtosText}</td>
+                                            <td class="py-3 px-4 font-medium text-slate-700 leading-relaxed">${alvosText}</td>
+                                        `;
+                                    })() : (isColaboradores ? '' : `
                                     <td class="py-3 px-4 text-center font-bold text-brand-700 whitespace-nowrap">
                                         ${(() => {
                                             const tempoEl = block.querySelector('.task-tempo');
@@ -1890,7 +2773,7 @@
                                             const combustivel = combustivelEl ? combustivelEl.value.trim() : '';
                                             return combustivel ? `${combustivel} L` : '--';
                                         })()}
-                                    </td>`}
+                                    </td>`)}
                                     ${isPacking ? '' : `
                                     <td class="py-3 px-4">
                                         ${(() => {
@@ -1923,8 +2806,8 @@
                                     ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[13%]">Dias</th>'}
                                     ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[9%]">Local</th>'}
                                     <th class="p-3 sm:p-4 font-black ${isPacking ? 'w-[40%]' : 'w-[18%]'}">Responsáveis</th>
-                                    <th class="p-3 sm:p-4 font-black ${isPacking ? 'w-[60%]' : 'w-[25%]'}">Operações</th>
-                                    ${isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[11%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[9%]">Combustível</th>'}
+                                    <th class="p-3 sm:p-4 font-black ${isPacking ? 'w-[60%]' : (isInsumos ? 'w-[16%]' : 'w-[25%]')}">${isInsumos ? 'Observações' : 'Operações'}</th>
+                                    ${isInsumos ? '<th class="p-3 sm:p-4 font-black w-[16%]">Produto(s)</th><th class="p-3 sm:p-4 font-black w-[14%]">Alvo / Motivo</th>' : (isColaboradores ? '' : '<th class="p-3 sm:p-4 font-black text-center w-[11%]">Tempo Est.</th><th class="p-3 sm:p-4 font-black text-center w-[9%]">Combustível</th>')}
                                     ${isPacking ? '' : '<th class="p-3 sm:p-4 font-black w-[15%]">Status</th>'}
                                 </tr>
                             </thead>
@@ -2024,7 +2907,10 @@
             const tratorWidths = ['13%', '8%', '18%', '27%', '11%', '9%', '14%'];
             const colaboradoresWidths = ['15%', '10%', '22%', '33%', '20%'];
             const packingWidths = ['40%', '60%'];
-            const colWidths = exportHeaders.length >= 7 ? tratorWidths : (exportHeaders.length === 2 ? packingWidths : colaboradoresWidths);
+            const insumosWidths = ['12%', '8%', '16%', '17%', '17%', '15%', '15%'];
+            const colWidths = getSelectedProgramacaoType() === 'Insumos'
+                ? insumosWidths
+                : (exportHeaders.length >= 7 ? tratorWidths : (exportHeaders.length === 2 ? packingWidths : colaboradoresWidths));
             colWidths.forEach((w, i) => { if (exportHeaders[i]) exportHeaders[i].style.width = w; });
 
             clone.querySelectorAll('#export-preview-table tbody td').forEach(cell => {
@@ -2112,6 +2998,18 @@
                                 payloadItem.combustivel = cVal ? `${cVal} L` : '';
                             }
 
+                            if (local === 'Insumos') {
+                                const categoriaEl = block.querySelector('.task-categoria');
+                                let categoriaSel = categoriaEl ? categoriaEl.value : '';
+                                if (categoriaSel === 'Outro') {
+                                    const categoriaCustomEl = block.querySelector('.task-categoria-custom');
+                                    categoriaSel = categoriaCustomEl ? categoriaCustomEl.value.trim() : '';
+                                }
+                                payloadItem.categoria = categoriaSel;
+                                payloadItem.produto = getSelectedProdutos(block).join(', ');
+                                payloadItem.alvo = getSelectedAlvos(block).join(', ');
+                            }
+
                             if (block.dataset.rowNumber) {
                                 updates.push({ ...payloadItem, rowNumber: parseInt(block.dataset.rowNumber), local: block.dataset.rowLocal || local });
                             } else {
@@ -2196,8 +3094,40 @@
                     });
                 }
                 console.log("Dados enviados para a planilha com sucesso!");
+                return result;
             } catch (err) {
                 console.error("Erro ao enviar para a planilha:", err);
+                return null;
+            }
+        }
+
+        async function sendTeamUpdateToGoogleSheets(team) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'updateTeam',
+                        rowNumber: team.rowNumber,
+                        programador: team.leader,
+                        operador: team.members.join(', '),
+                        blocos: team.name || ''
+                    })
+                });
+                const result = await response.json();
+                if (result.status !== 'sucesso') {
+                    console.error('Erro ao atualizar equipe na planilha:', result.mensagem);
+                    showMessageModal('Atenção', `A equipe foi salva no app, mas a planilha não foi atualizada: ${result.mensagem || 'erro desconhecido'}. O Apps Script provavelmente precisa ser reimplantado com a versão mais recente do código.`, 'error');
+                    return false;
+                }
+                console.log("Equipe atualizada na planilha com sucesso!");
+                return true;
+            } catch (err) {
+                console.error("Erro ao atualizar equipe na planilha:", err);
+                showMessageModal('Atenção', 'A equipe foi salva no app, mas não foi possível confirmar a atualização na planilha. Verifique sua conexão ou se o Apps Script foi reimplantado.', 'error');
+                return false;
             }
         }
 
@@ -2409,6 +3339,9 @@
                     }
                 }
 
+                const isInsumosRow = newType === 'Insumos';
+                const { categoria: categoriaVal, categoriaCustom: categoriaCustomVal } = resolveInsumoCategoria(isInsumosRow, row.categoria);
+
                 addTaskBlock(dayId, {
                     solicitante: solVal, solicitanteCustom: solCustomVal,
                     operador: opVal, operadorCustom: opCustomVal,
@@ -2416,6 +3349,10 @@
                     tempo, tempoUnit,
                     combustivel: (!isColaboradores && row.combustivel)
                         ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '',
+                    categoria: categoriaVal,
+                    categoriaCustom: categoriaCustomVal,
+                    produtos: isInsumosRow && row.produto ? row.produto.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    alvos: resolveInsumoAlvos(isInsumosRow, row.alvo),
                     status: row.status || 'Em Andamento',
                     rowNumber: row.rowNumber || '',
                     rowLocal: row.local || ''
@@ -2476,7 +3413,13 @@
                     <i data-lucide="arrow-up-left" class="w-3 h-3"></i> Carregar
                 </button>`;
 
-                const responsavelHtml = isColaboradores
+                const isInsumos = local === 'Insumos';
+                const responsavelHtml = isInsumos
+                    ? `<div class="col-span-2 sm:col-span-1">
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Quem Vai Aplicar</p>
+                           <p class="text-[12px] text-slate-600 leading-relaxed">${escapeHtml(row.operador) || '--'}</p>
+                       </div>`
+                    : isColaboradores
                     ? `<div class="col-span-2 sm:col-span-1">
                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Colaboradores</p>
                            <p class="text-[12px] text-slate-600 leading-relaxed">${escapeHtml(row.operador) || '--'}</p>
@@ -2490,6 +3433,21 @@
                            <p class="text-[12px] text-slate-500">${escapeHtml(String(row.tempo || '--'))} ${row.combustivel ? '· ' + escapeHtml(String(row.combustivel)) : ''}</p>
                        </div>`;
 
+                const insumosHtml = isInsumos ? `
+                    <div>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Categoria</p>
+                        <p class="text-[12px] font-bold text-slate-700">${escapeHtml(row.categoria) || '--'}</p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Produto(s)</p>
+                        <p class="text-[12px] text-slate-600">${escapeHtml(row.produto) || '--'}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Alvo / Motivo</p>
+                        <p class="text-[12px] text-slate-600">${escapeHtml(row.alvo) || '--'}</p>
+                    </div>
+                ` : '';
+
                 return `
                 <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <div class="flex items-start justify-between gap-3 mb-3">
@@ -2501,8 +3459,9 @@
                     </div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
                         ${responsavelHtml}
+                        ${insumosHtml}
                         ${row.operacoes ? `<div class="col-span-2">
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Operações</p>
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">${isInsumos ? 'Observações' : 'Operações'}</p>
                             <p class="text-[12px] text-slate-600">${escapeHtml(row.operacoes)}</p>
                         </div>` : ''}
                     </div>
@@ -2901,6 +3860,9 @@
                 ? String(row.combustivel).replace(/\s*L$/i, '').trim()
                 : '';
 
+            const isInsumosRow = newType === 'Insumos';
+            const { categoria: categoriaVal, categoriaCustom: categoriaCustomVal } = resolveInsumoCategoria(isInsumosRow, row.categoria);
+
             const taskData = {
                 solicitante: solVal,
                 solicitanteCustom: solCustomVal,
@@ -2911,6 +3873,10 @@
                 tempo,
                 tempoUnit,
                 combustivel,
+                categoria: categoriaVal,
+                categoriaCustom: categoriaCustomVal,
+                produtos: isInsumosRow && row.produto ? row.produto.split(',').map(s => s.trim()).filter(Boolean) : [],
+                alvos: resolveInsumoAlvos(isInsumosRow, row.alvo),
                 status: row.status || 'Em Andamento',
                 rowNumber: row.rowNumber || '',
                 rowLocal: row.local || ''
