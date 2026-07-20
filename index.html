@@ -110,22 +110,54 @@
             font-size: 10px !important;
             line-height: 1.35 !important;
         }
+
+        /* Ajustes para telas bem estreitas (iPhone SE/mini e similares, ~375px ou menos) */
+        @media (max-width: 400px) {
+            .app-navbar {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+            .app-navbar-subtitle {
+                display: none !important;
+            }
+            .app-navbar-actions {
+                gap: 4px !important;
+            }
+            .app-navbar-actions button {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+            .app-navbar-actions button span {
+                font-size: 10px !important;
+            }
+            .app-main {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                gap: 16px !important;
+            }
+            .app-form-card {
+                padding: 16px !important;
+            }
+            .field-grid-2 {
+                grid-template-columns: 1fr !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-20 select-none">
 
     <!-- Navbar -->
-    <div class="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm sticky top-0 z-40">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg shadow-sm border border-slate-100 bg-brand-100 flex items-center justify-center text-brand-600">
+    <div class="app-navbar bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm sticky top-0 z-40">
+        <div class="app-navbar-brand flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 shrink-0 rounded-lg shadow-sm border border-slate-100 bg-brand-100 flex items-center justify-center text-brand-600">
                 <i data-lucide="tractor" class="w-5 h-5"></i>
             </div>
-            <div>
-                <h1 class="text-sm font-bold text-slate-800 leading-tight">SPG SEDE</h1>
-                <p class="text-[10px] text-brand-600 font-bold uppercase tracking-wide">Programação Semanal</p>
+            <div class="min-w-0">
+                <h1 class="text-sm font-bold text-slate-800 leading-tight whitespace-nowrap">SPG SEDE</h1>
+                <p class="app-navbar-subtitle text-[10px] text-brand-600 font-bold uppercase tracking-wide whitespace-nowrap">Programação Semanal</p>
             </div>
         </div>
-        <div class="flex gap-2">
+        <div class="app-navbar-actions flex gap-2 shrink-0">
             <button type="button" onclick="openHistoryModal()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all active:scale-95 border border-slate-200">
                 <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
                 <span class="hidden sm:inline">Histórico</span>
@@ -150,12 +182,12 @@
         </div>
     </div>
 
-    <div class="container mx-auto p-4 flex flex-col lg:flex-row gap-8 mt-4">
-        
+    <div class="app-main container mx-auto p-4 flex flex-col lg:flex-row gap-8 mt-4">
+
         <!-- COLUNA DA ESQUERDA: FORMULÁRIO -->
         <div class="w-full lg:w-[42%] space-y-4">
 
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/80">
+            <div class="app-form-card bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/80">
                 <h2 class="text-lg font-black text-slate-800 flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
                     <div class="p-2 bg-brand-50 rounded-xl text-brand-600">
                         <i data-lucide="calendar" class="w-5 h-5"></i>
@@ -2396,7 +2428,7 @@
                         <input type="text" class="task-solicitante-custom hidden" value="">
                     ` : ''}
 
-                    <div class="${isPacking ? '' : 'grid grid-cols-2 gap-3 '}mb-4">
+                    <div class="${isPacking ? '' : 'grid grid-cols-2 gap-3 field-grid-2 '}mb-4">
                         ${!isPacking ? `<div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Solicitante</label>
                             <select class="task-solicitante w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleCustomInput(this); updatePreview()">
@@ -2463,7 +2495,7 @@
 
                     ${isInsumos ? `
                     <div class="mb-4 space-y-4">
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-2 gap-3 field-grid-2">
                             <div>
                                 <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Categoria</label>
                                 <select class="task-categoria w-full p-3 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm cursor-pointer" onchange="toggleCustomInput(this); updatePreview()">
@@ -2521,7 +2553,7 @@
                         </div>
                     </div>
                     ` : (isColaboradores ? '' : `
-                    <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="grid grid-cols-2 gap-3 mb-4 field-grid-2">
                         <div>
                             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tempo Estimado</label>
                             <div class="flex">
@@ -2644,6 +2676,22 @@
 
         let preparedShareData = null;
         let historyRows = [];
+
+        function isIOSDevice() {
+            return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        // O WebKit do iOS falha silenciosamente (imagem em branco) ao gerar canvas
+        // muito grandes, então reduzimos o pixelRatio nesses aparelhos para caber
+        // no limite seguro de ~4000px por lado / ~16MP de área total.
+        function getSafeExportPixelRatio(widthPx, heightPx, desiredRatio) {
+            if (!isIOSDevice() || !widthPx || !heightPx) return desiredRatio;
+            const MAX_DIMENSION = 4000;
+            const MAX_AREA = 16000000;
+            let ratio = Math.min(desiredRatio, MAX_DIMENSION / widthPx, MAX_DIMENSION / heightPx, Math.sqrt(MAX_AREA / (widthPx * heightPx)));
+            return Math.max(1, ratio);
+        }
 
         function updatePreview() {
             const weekNumber = getEffectiveWeekNumber();
@@ -3033,12 +3081,14 @@
                 document.body.appendChild(exportStage);
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-                const dataUrl = await htmlToImage.toPng(exportClone, captureOptions);
+                const cloneRect = exportClone.getBoundingClientRect();
+                const safeRatio = getSafeExportPixelRatio(cloneRect.width, cloneRect.height, EXPORT_PIXEL_RATIO);
+                const dataUrl = await htmlToImage.toPng(exportClone, { ...captureOptions, pixelRatio: safeRatio });
                 const blob = await (await fetch(dataUrl)).blob();
 
                 preparedShareData.dataUrl = dataUrl;
                 preparedShareData.file = new File([blob], preparedShareData.filename, { type: 'image/png' });
-                downloadFile(dataUrl, preparedShareData.filename);
+                downloadFile(blob, preparedShareData.filename);
             } catch (err) {
                 console.error(err);
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
@@ -3146,10 +3196,20 @@
             }
         }
 
-        function downloadFile(uri, name) { 
-            const link = document.createElement('a'); 
-            link.href = uri; link.download = name; 
-            document.body.appendChild(link); link.click(); document.body.removeChild(link); 
+        // O Safari do iOS não baixa arquivos a partir de links com "download" quando o href é
+        // uma data: URL (ele apenas abre a imagem). Usar um blob: URL resolve isso de forma confiável.
+        async function downloadFile(source, name) {
+            try {
+                const blob = source instanceof Blob ? source : await (await fetch(source)).blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = blobUrl; link.download = name;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+            } catch (err) {
+                console.error('Erro ao baixar imagem:', err);
+                window.open(source, '_blank');
+            }
         }
 
         function showMessageModal(title, message, type) {
@@ -3737,7 +3797,9 @@
             const filename = `Encerramento_Packing_${(document.getElementById('packingDate').value || 'dia').replace(/-/g, '')}.png`;
             try {
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-                const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: 3, backgroundColor: '#f0f2f5', cacheBust: true });
+                const stageRect = stage.firstElementChild.getBoundingClientRect();
+                const safeRatio = getSafeExportPixelRatio(stageRect.width, stageRect.height, 3);
+                const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: safeRatio, backgroundColor: '#f0f2f5', cacheBust: true });
                 downloadFile(dataUrl, filename);
             } catch (err) {
                 console.error(err);
