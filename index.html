@@ -542,6 +542,30 @@
         </div>
     </div>
 
+    <!-- MODAL DE COMPARTILHAMENTO DA IMAGEM GERADA -->
+    <div id="shareImageModal" class="fixed inset-0 bg-black/60 z-[70] hidden flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-11/12 max-w-md transform transition-all scale-100">
+            <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-green-50 mb-4">
+                <i data-lucide="image" class="h-8 w-8 text-green-600"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 text-center">Imagem Gerada!</h3>
+            <p class="text-sm text-slate-500 mt-3 text-center leading-relaxed font-medium">
+                Compartilhe direto no WhatsApp ou salve a imagem no aparelho.
+            </p>
+            <div class="grid grid-cols-1 gap-3 mt-6">
+                <button id="shareImageBtn" onclick="shareGeneratedImage()" class="px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-green-500/20 active:scale-95 uppercase flex justify-center items-center gap-2">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> Compartilhar no WhatsApp
+                </button>
+                <button onclick="downloadGeneratedImage()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors active:scale-95 uppercase flex justify-center items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Baixar Imagem
+                </button>
+                <button onclick="closeShareImageModal()" class="px-4 py-2 text-slate-400 hover:text-slate-600 font-bold rounded-xl text-xs transition-colors uppercase">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE MENSAGEM -->
     <div id="messageModal" class="fixed inset-0 bg-black/50 z-50 hidden flex justify-center items-center backdrop-blur-sm transition-opacity duration-300">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm transform transition-all scale-100 text-center">
@@ -2778,21 +2802,54 @@
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         }
 
-        // O Safari do iOS só permite window.open() dentro do mesmo tick síncrono do clique do
-        // usuário; se chamado depois de qualquer "await" (ex: aguardando a geração da imagem),
-        // ele bloqueia o popup silenciosamente e nada acontece. Por isso abrimos a aba vazia
-        // aqui, ainda de forma síncrona, e só preenchemos o conteúdo dela depois.
-        function openIOSPreviewWindow() {
-            if (!isIOSDevice()) return null;
+        function canShareFiles(file) {
+            return typeof navigator.share === 'function' &&
+                typeof navigator.canShare === 'function' &&
+                navigator.canShare({ files: [file] });
+        }
+
+        let _pendingShareData = null;
+
+        // Depois de gerar a imagem, mostra um popup com a opção de compartilhar direto
+        // (WhatsApp e outros apps, via Web Share API) ou baixar o arquivo. Como as ações
+        // só disparam quando o usuário toca em um botão do popup, o clique sempre conta como
+        // um gesto novo do usuário — necessário para o navegador permitir o compartilhamento
+        // ou a abertura de janela no Safari do iOS.
+        function openShareImageModal({ file, blob, filename, shareText }) {
+            _pendingShareData = { file, blob, filename, shareText };
+            const shareBtn = document.getElementById('shareImageBtn');
+            if (shareBtn) shareBtn.classList.toggle('hidden', !canShareFiles(file));
+            document.getElementById('shareImageModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeShareImageModal() {
+            document.getElementById('shareImageModal').classList.add('hidden');
+            _pendingShareData = null;
+        }
+
+        async function shareGeneratedImage() {
+            if (!_pendingShareData) return;
+            const { file, shareText } = _pendingShareData;
+            document.getElementById('shareImageModal').classList.add('hidden');
             try {
-                const win = window.open('', '_blank');
-                if (win && win.document) {
-                    win.document.write('<title>Gerando imagem...</title><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#64748b;">Gerando imagem, aguarde...</body>');
+                await navigator.share({ files: [file], title: document.title, text: shareText || '' });
+            } catch (err) {
+                if (err && err.name !== 'AbortError') {
+                    console.error('Erro ao compartilhar imagem:', err);
+                    showMessageModal('Erro', 'Não foi possível compartilhar a imagem. Tente baixá-la e enviar manualmente.', 'error');
                 }
-                return win;
-            } catch (e) {
-                return null;
+            } finally {
+                _pendingShareData = null;
             }
+        }
+
+        async function downloadGeneratedImage() {
+            if (!_pendingShareData) return;
+            const { blob, filename } = _pendingShareData;
+            document.getElementById('shareImageModal').classList.add('hidden');
+            await downloadFile(blob, filename);
+            _pendingShareData = null;
         }
 
         // O WebKit do iOS falha silenciosamente (imagem em branco) ao gerar canvas
@@ -3093,7 +3150,6 @@
         }
 
         async function executeSend() {
-            const iosWindow = openIOSPreviewWindow();
             hideConfirmModal();
             const btnSpan = document.querySelector('button[onclick="confirmBeforeSend()"] span.hidden.sm\\:inline') || document.querySelector('button[onclick="confirmBeforeSend()"] span');
             const originalText = btnSpan.innerText; 
@@ -3200,12 +3256,12 @@
                 const dataUrl = await htmlToImage.toPng(exportClone, { ...captureOptions, pixelRatio: safeRatio });
                 const blob = await (await fetch(dataUrl)).blob();
 
+                const file = new File([blob], preparedShareData.filename, { type: 'image/png' });
                 preparedShareData.dataUrl = dataUrl;
-                preparedShareData.file = new File([blob], preparedShareData.filename, { type: 'image/png' });
-                await downloadFile(blob, preparedShareData.filename, iosWindow);
+                preparedShareData.file = file;
+                openShareImageModal({ file, blob, filename: preparedShareData.filename, shareText: preparedShareData.shareText });
             } catch (err) {
                 console.error(err);
-                if (iosWindow && !iosWindow.closed) iosWindow.close();
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
             } finally {
                 if (exportStage && exportStage.parentNode) {
@@ -3314,16 +3370,16 @@
         // O Safari do iOS não suporta o atributo "download" em links (o clique simplesmente
         // não faz nada, silenciosamente). Nesses aparelhos abrimos a imagem numa nova aba para
         // o usuário salvá-la com "Segurar e Salvar Imagem". Em outros navegadores usamos o
-        // fluxo normal de download via blob: URL.
-        async function downloadFile(source, name, preOpenedWindow) {
+        // fluxo normal de download via blob: URL. Esta função só deve ser chamada a partir de
+        // um clique direto do usuário (ex: botão do popup de compartilhamento), para que o
+        // navegador não bloqueie a abertura da janela/download.
+        async function downloadFile(source, name) {
             try {
                 const blob = source instanceof Blob ? source : await (await fetch(source)).blob();
                 const blobUrl = URL.createObjectURL(blob);
 
                 if (isIOSDevice()) {
-                    let win = preOpenedWindow;
-                    if (!win || win.closed) win = window.open(blobUrl, '_blank');
-                    else win.location.href = blobUrl;
+                    const win = window.open(blobUrl, '_blank');
                     if (!win) {
                         showMessageModal('Não foi possível abrir a imagem', 'O navegador bloqueou a abertura da imagem. Verifique se o bloqueador de pop-ups está desativado para este site e tente novamente.', 'error');
                         return;
@@ -3339,7 +3395,6 @@
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
             } catch (err) {
                 console.error('Erro ao baixar imagem:', err);
-                if (preOpenedWindow && !preOpenedWindow.closed) preOpenedWindow.close();
                 window.open(source, '_blank');
             }
         }
@@ -3942,7 +3997,6 @@
                 return;
             }
 
-            const iosWindow = openIOSPreviewWindow();
             const stage = document.createElement('div');
             stage.style.cssText = 'position:absolute;left:-10000px;top:0;pointer-events:none;overflow:visible;';
             stage.innerHTML = buildClosingExportHtml(data);
@@ -3954,10 +4008,11 @@
                 const stageRect = stage.firstElementChild.getBoundingClientRect();
                 const safeRatio = getSafeExportPixelRatio(stageRect.width, stageRect.height, 3);
                 const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: safeRatio, backgroundColor: '#f0f2f5', cacheBust: true });
-                await downloadFile(dataUrl, filename, iosWindow);
+                const blob = await (await fetch(dataUrl)).blob();
+                const file = new File([blob], filename, { type: 'image/png' });
+                openShareImageModal({ file, blob, filename, shareText: `Encerramento do dia - Semana ${data.weekNumber}` });
             } catch (err) {
                 console.error(err);
-                if (iosWindow && !iosWindow.closed) iosWindow.close();
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
             } finally {
                 document.body.removeChild(stage);
