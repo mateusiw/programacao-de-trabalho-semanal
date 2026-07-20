@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta id="viewportMeta" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Programação Semanal SPG</title>
     
     <!-- Ícones e Manifest -->
@@ -142,9 +142,32 @@
                 grid-template-columns: 1fr !important;
             }
         }
+
+        /* Modo Paisagem: gira o conteúdo 90° para caber melhor na tela do celular sem
+           precisar girar o aparelho. Largura/altura e a rotação são calculadas via JS
+           (updateLandscapeWrapperSize) usando window.innerWidth/innerHeight em pixels reais,
+           porque unidades vh/vw no mobile variam com a barra de endereço do navegador e
+           deixavam a caixa menor que a tela, revelando a página por trás.  */
+        .landscape-rotate-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform-origin: top left;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px;
+            box-sizing: border-box;
+            background: #0f172a;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-20 select-none">
+
+    <!-- OVERLAY DE CARREGAMENTO: bloqueia e desfoca a tela enquanto envia/gera a imagem, para o usuário não clicar várias vezes -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[90] hidden flex flex-col items-center justify-center gap-4 bg-white/70 backdrop-blur-sm" style="touch-action: none; overscroll-behavior: contain;">
+        <div class="w-12 h-12 border-4 border-brand-400 border-t-transparent rounded-full animate-spin"></div>
+        <p id="loadingOverlayText" class="text-sm font-bold text-slate-600 px-6 text-center">Aguarde...</p>
+    </div>
 
     <!-- TELA DE SELEÇÃO DE SETOR/PROGRAMAÇÃO -->
     <div id="sectorGateScreen" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center p-4 overflow-y-auto">
@@ -291,7 +314,13 @@
 
         <!-- COLUNA DA DIREITA: PREVIEW DO RELATÓRIO (FORMATO BIOMETRIA) -->
         <div class="w-full lg:w-[58%] flex flex-col bg-slate-200/50 p-3 sm:p-4 rounded-3xl border border-slate-300/50 min-w-0 lg:sticky lg:top-[72px] lg:self-start lg:max-h-[calc(100vh-88px)] overflow-x-auto overflow-y-auto">
-            
+
+            <div class="flex justify-end mb-2 lg:hidden">
+                <button type="button" onclick="openLandscapeMode()" class="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold shadow-sm border border-slate-200 transition-all active:scale-95">
+                    <i data-lucide="rotate-cw" class="w-4 h-4 text-brand-600"></i> Ver em modo paisagem
+                </button>
+            </div>
+
             <!-- Wrapper para Exportação (Fundo Cinza Claro #f0f2f5) -->
             <div id="export-wrapper" class="w-full mx-auto p-4 sm:p-6 bg-[#f0f2f5] rounded-3xl flex flex-col gap-4 min-w-0">
                 
@@ -540,6 +569,17 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO EM MODO PAISAGEM (para ver a tabela completa no celular) -->
+    <div id="landscapeModal" class="fixed inset-0 z-[95] hidden bg-black" onclick="if (event.target === this) closeLandscapeMode()">
+        <button type="button" onclick="closeLandscapeMode()" class="fixed top-3 right-3 z-10 flex items-center gap-2 px-3 py-2 bg-white text-slate-700 rounded-lg text-xs font-bold shadow-lg">
+            <i data-lucide="x" class="w-4 h-4"></i> Fechar
+        </button>
+        <p class="fixed bottom-3 left-1/2 -translate-x-1/2 z-10 text-[11px] font-bold text-white/80 bg-black/40 px-3 py-1.5 rounded-full whitespace-nowrap">
+            Gire o celular ou arraste para ver a tabela toda
+        </p>
+        <div id="landscapeContent" class="landscape-rotate-wrapper"></div>
     </div>
 
     <!-- MODAL DE COMPARTILHAMENTO DA IMAGEM GERADA -->
@@ -1995,6 +2035,96 @@
             }
         }
 
+        // Congela a página por trás de telas/overlays em tela cheia: além de bloquear
+        // cliques, trava o scroll do body (inclusive o "bounce"/arrasto por toque do Safari
+        // no iOS). Usa contador porque mais de uma tela pode ficar aberta ao mesmo tempo
+        // (ex: overlay de carregamento sobre a tela de seleção de setor).
+        let _scrollLockCount = 0;
+        let _scrollLockY = 0;
+
+        function lockBodyScroll() {
+            if (_scrollLockCount === 0) {
+                _scrollLockY = window.scrollY || window.pageYOffset || 0;
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${_scrollLockY}px`;
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                document.body.style.width = '100%';
+            }
+            _scrollLockCount++;
+        }
+
+        function unlockBodyScroll() {
+            if (_scrollLockCount === 0) return;
+            _scrollLockCount--;
+            if (_scrollLockCount === 0) {
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                document.body.style.width = '';
+                window.scrollTo(0, _scrollLockY);
+            }
+        }
+
+        // Modo Paisagem: clona o preview do relatório para um popup em tela cheia que gira
+        // 90° para deixar a tabela bem maior e mais fácil de ler no celular sem depender do
+        // usuário girar o aparelho. O tamanho é calculado em pixels reais via JS (não em
+        // vh/vw), porque essas unidades variam com a barra de endereço do navegador no
+        // celular e deixavam a caixa menor que a tela, revelando a página por trás dela.
+        function updateLandscapeWrapperSize() {
+            const wrapper = document.getElementById('landscapeContent');
+            if (!wrapper) return;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            if (vw > vh) {
+                // Celular já está fisicamente em paisagem: sem rotação, ocupa a tela toda.
+                wrapper.style.width = vw + 'px';
+                wrapper.style.height = vh + 'px';
+                wrapper.style.transform = 'none';
+            } else {
+                wrapper.style.width = vh + 'px';
+                wrapper.style.height = vw + 'px';
+                wrapper.style.transform = 'rotate(90deg) translateY(-100%)';
+            }
+        }
+
+        // O app desativa o pinça-para-zoom globalmente (user-scalable=no) pra evitar zoom
+        // sem querer enquanto a pessoa preenche o formulário. Dentro do Modo Paisagem isso
+        // atrapalha, então liberamos o zoom nativo do navegador só enquanto o popup está
+        // aberto e restauramos a configuração original ao fechar.
+        const DEFAULT_VIEWPORT_CONTENT = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        const ZOOMABLE_VIEWPORT_CONTENT = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+
+        function setViewportZoomable(zoomable) {
+            const meta = document.getElementById('viewportMeta');
+            if (meta) meta.setAttribute('content', zoomable ? ZOOMABLE_VIEWPORT_CONTENT : DEFAULT_VIEWPORT_CONTENT);
+        }
+
+        function openLandscapeMode() {
+            const source = document.getElementById('export-wrapper');
+            const target = document.getElementById('landscapeContent');
+            if (!source || !target) return;
+            target.innerHTML = '';
+            target.appendChild(source.cloneNode(true));
+            document.getElementById('landscapeModal').classList.remove('hidden');
+            updateLandscapeWrapperSize();
+            window.addEventListener('resize', updateLandscapeWrapperSize);
+            window.addEventListener('orientationchange', updateLandscapeWrapperSize);
+            setViewportZoomable(true);
+            lockBodyScroll();
+            lucide.createIcons();
+        }
+
+        function closeLandscapeMode() {
+            document.getElementById('landscapeModal').classList.add('hidden');
+            document.getElementById('landscapeContent').innerHTML = '';
+            setViewportZoomable(false);
+            window.removeEventListener('resize', updateLandscapeWrapperSize);
+            window.removeEventListener('orientationchange', updateLandscapeWrapperSize);
+            unlockBodyScroll();
+        }
+
         const SECTOR_STORAGE_KEY = 'spg_selectedSector';
         const SECTOR_GATE_OPEN_KEY = 'spg_sectorGateOpen';
 
@@ -2005,6 +2135,7 @@
         function showSectorGate(allowClose) {
             document.getElementById('sectorGateCloseBtn').classList.toggle('hidden', !allowClose);
             document.getElementById('sectorGateScreen').classList.remove('hidden');
+            lockBodyScroll();
             lucide.createIcons();
         }
 
@@ -2016,6 +2147,7 @@
         function closeSectorGate() {
             localStorage.removeItem(SECTOR_GATE_OPEN_KEY);
             document.getElementById('sectorGateScreen').classList.add('hidden');
+            unlockBodyScroll();
         }
 
         function selectSector(type) {
@@ -3151,8 +3283,9 @@
 
         async function executeSend() {
             hideConfirmModal();
+            showLoadingOverlay('Salvando e gerando a imagem, aguarde...');
             const btnSpan = document.querySelector('button[onclick="confirmBeforeSend()"] span.hidden.sm\\:inline') || document.querySelector('button[onclick="confirmBeforeSend()"] span');
-            const originalText = btnSpan.innerText; 
+            const originalText = btnSpan.innerText;
             btnSpan.innerText = "Salvando e Gerando...";
             const element = document.getElementById('export-wrapper');
             const EXPORT_PIXEL_RATIO = 3;
@@ -3239,10 +3372,18 @@
                 });
 
                 if (inserts.length > 0) {
-                    await sendDataToGoogleSheets(inserts, insertBlocks);
+                    const insertResult = await sendDataToGoogleSheets(inserts, insertBlocks);
+                    if (!insertResult || insertResult.status !== 'sucesso') {
+                        showMessageModal('Falha ao salvar', 'Não foi possível salvar a programação na planilha. Verifique sua conexão e tente novamente. Nada foi gerado ainda, então clicar em "Enviar" de novo não vai duplicar nada.', 'error');
+                        return;
+                    }
                 }
                 if (updates.length > 0) {
-                    await sendUpdatesToGoogleSheets(updates);
+                    const updateOk = await sendUpdatesToGoogleSheets(updates);
+                    if (!updateOk) {
+                        showMessageModal('Falha ao atualizar', 'Não foi possível confirmar a atualização de alguns itens na planilha. Verifique sua conexão antes de tentar novamente.', 'error');
+                        return;
+                    }
                 }
 
                 const exportSetup = prepareExportClone(element);
@@ -3268,6 +3409,7 @@
                     exportStage.parentNode.removeChild(exportStage);
                 }
                 btnSpan.innerText = originalText;
+                hideLoadingOverlay();
             }
         }
 
@@ -3355,15 +3497,24 @@
         async function sendUpdatesToGoogleSheets(updates) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                // "no-cors" foi removido: com ele a resposta fica opaca e o app nunca
+                // consegue saber se a atualização realmente funcionou (ver bug de duplicação).
+                const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'updateRows', updates })
                 });
+                const result = await response.json();
+                if (result.status !== 'sucesso') {
+                    console.error('Erro ao atualizar planilha:', result.mensagem);
+                    return false;
+                }
                 console.log("Atualizações enviadas para a planilha com sucesso!");
+                return true;
             } catch (err) {
                 console.error("Erro ao atualizar planilha:", err);
+                return false;
             }
         }
 
@@ -3411,6 +3562,20 @@
             modal.classList.remove('hidden'); lucide.createIcons();
         }
         function hideMessageModal() { document.getElementById('messageModal').classList.add('hidden'); }
+
+        function showLoadingOverlay(text) {
+            const overlay = document.getElementById('loadingOverlay');
+            const textEl = document.getElementById('loadingOverlayText');
+            if (textEl) textEl.innerText = text || 'Aguarde...';
+            if (overlay) overlay.classList.remove('hidden');
+            lockBodyScroll();
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.add('hidden');
+            unlockBodyScroll();
+        }
 
         // ==========================================
         // STATUS DAS TAREFAS
@@ -3472,11 +3637,13 @@
             if (!startInput.value) startInput.value = firstDay.toISOString().split('T')[0];
             document.getElementById('historyLocal').value = getSelectedProgramacaoType();
             document.getElementById('historyModal').classList.remove('hidden');
+            lockBodyScroll();
             lucide.createIcons();
         }
 
         function closeHistoryModal() {
             document.getElementById('historyModal').classList.add('hidden');
+            unlockBodyScroll();
         }
 
         async function fetchHistory() {
@@ -3997,6 +4164,7 @@
                 return;
             }
 
+            showLoadingOverlay('Gerando imagem do encerramento, aguarde...');
             const stage = document.createElement('div');
             stage.style.cssText = 'position:absolute;left:-10000px;top:0;pointer-events:none;overflow:visible;';
             stage.innerHTML = buildClosingExportHtml(data);
@@ -4016,6 +4184,7 @@
                 showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
             } finally {
                 document.body.removeChild(stage);
+                hideLoadingOverlay();
             }
 
             // Envia "realizado" para o Google Sheets
