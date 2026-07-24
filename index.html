@@ -11,7 +11,10 @@
     <meta name="theme-color" content="#f59e0b">
     
     <!-- Bibliotecas Externas -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fixado na v3: a v4 (servida por padrão em "cdn.tailwindcss.com" sem versão)
+    trocou a paleta de cores pra oklch(), e a html-to-image trava a aba inteira
+    tentando converter essas cores ao gerar a imagem (nenhum erro, só congela). -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -35,7 +38,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html-to-image/dist/html-to-image.js"></script>
+    <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
     
     <style>
         body { 
@@ -356,6 +359,64 @@
             }
         }
 
+        /* MODO PAISAGEM (celular): gira o conteúdo 90° via CSS em vez de depender do
+           SO/navegador reformatar a tela quando o usuário vira o aparelho — no iOS a
+           orientação da página costuma travar. Depois de ativar, é pra girar o celular
+           de verdade: como o conteúdo já está pré-rotacionado, as duas rotações se
+           cancelam e a tabela aparece larga e correta na tela virada. */
+        .landscape-mode-active {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vh !important;
+            height: 100vw !important;
+            max-width: 100vh !important;
+            max-height: 100vw !important;
+            margin: 0 !important;
+            transform-origin: top left;
+            transform: rotate(90deg) translateY(-100%);
+            background: #fff;
+            z-index: 200;
+            overflow: auto !important;
+            padding: 60px 16px 16px 16px !important;
+            box-sizing: border-box;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+        .landscape-mode-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.92);
+            z-index: 195;
+        }
+        .landscape-mode-backdrop.active { display: block; }
+        /* Botão de sair: elemento fixo e INDEPENDENTE do container rotacionado —
+           de propósito, pra não repetir o bug de baixo (ver comentário no botão). */
+        #landscapeModeExitBtn {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vh;
+            transform-origin: top left;
+            transform: rotate(90deg) translateY(-100%);
+            box-sizing: border-box;
+            padding: 12px 16px;
+            background: #0f172a;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: none;
+            cursor: pointer;
+            z-index: 201;
+        }
+        #landscapeModeExitBtn.active { display: flex; }
+
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-20 select-none">
@@ -365,6 +426,15 @@
         <div class="w-12 h-12 border-4 border-brand-400 border-t-transparent rounded-full animate-spin"></div>
         <p id="loadingOverlayText" class="text-sm font-bold text-slate-600 px-6 text-center">Aguarde...</p>
     </div>
+
+    <!-- BACKDROP DO MODO PAISAGEM: fica atrás da tabela girada; tocar nele também fecha -->
+    <div id="landscapeModeBackdrop" class="landscape-mode-backdrop" onclick="exitLandscapeMode()"></div>
+
+    <!-- BOTÃO DE SAIR DO MODO PAISAGEM: fixo e independente do conteúdo da tabela (não
+         usa position:sticky, que não é confiável dentro de um elemento com transform) -->
+    <button type="button" id="landscapeModeExitBtn" onclick="exitLandscapeMode()">
+        <i data-lucide="x" class="w-4 h-4"></i> Sair do Modo Paisagem
+    </button>
 
     <!-- SHELL DO DASHBOARD: MENU LATERAL + CONTEÚDO -->
     <div id="appShell" class="flex">
@@ -640,6 +710,11 @@
                         </div>
                     </div>
 
+                    <div class="no-print flex justify-end mb-2 sm:hidden">
+                        <button type="button" onclick="toggleLandscapeMode('dashTableContainer')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide active:scale-95 transition-all">
+                            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Modo Paisagem
+                        </button>
+                    </div>
                     <div id="dashTableContainer"></div>
                 </div>
             </div>
@@ -682,6 +757,8 @@
 
                 <div id="prodStatCards" class="mb-5"></div>
 
+                <div id="prodTrendChartContainer" class="mb-6"></div>
+
                 <div id="prodDestaquesContainer" class="mb-6"></div>
 
                 <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
@@ -696,6 +773,11 @@
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Caixas/hora considera jornada simulada de 8h (07:00-11:30 e 13:00-16:30)</p>
                 </div>
 
+                <div class="no-print flex justify-end mb-2 sm:hidden">
+                    <button type="button" onclick="toggleLandscapeMode('prodTableContainer')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide active:scale-95 transition-all">
+                        <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Modo Paisagem
+                    </button>
+                </div>
                 <div id="prodTableContainer"></div>
             </div>
 
@@ -767,6 +849,11 @@
                     </select>
                 </div>
 
+                <div class="no-print flex justify-end mb-2 sm:hidden">
+                    <button type="button" onclick="toggleLandscapeMode('relatorioDocument')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide active:scale-95 transition-all">
+                        <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Modo Paisagem
+                    </button>
+                </div>
                 <div id="relatorioDocument" class="relatorio-doc"></div>
             </div>
 
@@ -808,6 +895,11 @@
                         </div>
                     </div>
                     <div id="historyEmpty" class="hidden text-center text-slate-400 text-sm italic py-8">Nenhum registro encontrado para o período selecionado.</div>
+                    <div class="flex justify-end mb-2 sm:hidden">
+                        <button type="button" onclick="toggleLandscapeMode('historyResults')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide active:scale-95 transition-all">
+                            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Modo Paisagem
+                        </button>
+                    </div>
                     <div id="historyResults" class="hidden rounded-xl border border-slate-200 overflow-hidden max-h-[55vh] overflow-y-auto"></div>
                 </div>
             </div>
@@ -1054,7 +1146,44 @@
             </div>
             <p class="text-[11px] text-slate-400 font-medium mb-4">Visualização apenas — pra editar ou lançar uma nova programação, use "Trocar setor" e depois "Nova Programação".</p>
             <div id="calendarDayViewStats" class="mb-4"></div>
+            <div class="flex justify-end mb-2 sm:hidden">
+                <button type="button" onclick="toggleLandscapeMode('calendarDayViewTable')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wide active:scale-95 transition-all">
+                    <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Modo Paisagem
+                </button>
+            </div>
             <div id="calendarDayViewTable"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: PERFIL INDIVIDUAL DE PRODUTIVIDADE (pro RH/supervisor analisar 1 colaborador) -->
+    <div id="prodProfileModal" class="fixed inset-0 bg-black/60 z-[75] hidden flex justify-center items-start backdrop-blur-sm transition-opacity duration-300 overflow-y-auto py-4">
+        <div class="bg-slate-50 rounded-2xl shadow-2xl p-4 sm:p-6 w-[95vw] max-w-4xl my-auto">
+            <div class="flex items-center justify-between gap-3 mb-5">
+                <h3 class="text-lg font-black text-slate-800 flex items-center gap-3 min-w-0">
+                    <div id="prodProfileAvatar" class="shrink-0"></div>
+                    <span id="prodProfileName" class="truncate">--</span>
+                </h3>
+                <button onclick="closeProdutividadeProfile()" class="shrink-0 p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+                </button>
+            </div>
+            <p class="text-[11px] text-slate-400 font-medium mb-4">Perfil individual no período filtrado — pontos fortes pra apoiar avaliação de desempenho.</p>
+
+            <div id="prodProfileStatCards" class="mb-4"></div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+                <div id="prodProfileTrendContainer"></div>
+            </div>
+
+            <div id="prodProfileWeekday"></div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mt-4">
+                <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <i data-lucide="notebook-pen" class="w-3.5 h-3.5 text-slate-500"></i> O que fez, dia a dia
+                </h3>
+                <p class="text-[11px] text-slate-400 font-medium mb-2">Registrado no "Controle individual de equipe" do Encerramento do Dia.</p>
+                <div id="prodProfileFeitos" class="max-h-[35vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+            </div>
         </div>
     </div>
 
@@ -1105,13 +1234,50 @@
                 <div id="closingProductionCards" class="space-y-3 max-h-[52vh] overflow-y-auto pr-1 hide-scrollbar"></div>
             </div>
 
-            <!-- ETAPA 4: Resumo de caixas -->
+            <!-- ETAPA: Avaliação individual da equipe do dia -->
+            <div id="closingStepAvaliacao" class="mb-2 hidden">
+                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i>
+                    Avaliação da equipe
+                </h4>
+                <p class="text-[11px] text-slate-400 font-medium mb-3">Avalie cada colaborador que trabalhou hoje: Assiduidade, Organização, Participação, Agilidade e Pontualidade. Opcional — só quem for avaliado é enviado.</p>
+                <div id="closingAvaliacaoCards" class="space-y-2.5 max-h-[52vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+            </div>
+
+            <!-- ETAPA FINAL: Horário do dia + Resumo de caixas (SPG Packing) -->
             <div id="closingStepResumo" class="mb-2 hidden">
                 <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <i data-lucide="package-check" class="w-3.5 h-3.5 text-green-600"></i>
-                    Resumo de caixas do dia
+                    <i data-lucide="clock" class="w-3.5 h-3.5 text-blue-600"></i>
+                    Horário do dia
                 </h4>
-                <div id="closingSummaryContainer" class="max-h-[52vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-5">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Início</label>
+                            <input type="time" id="closingHoraInicio" oninput="saveClosingHorarios()" class="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Saída Almoço</label>
+                            <input type="time" id="closingHoraSaidaAlmoco" oninput="saveClosingHorarios()" class="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Volta Almoço</label>
+                            <input type="time" id="closingHoraVoltaAlmoco" oninput="saveClosingHorarios()" class="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Saída</label>
+                            <input type="time" id="closingHoraSaida" oninput="saveClosingHorarios()" class="w-full p-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="closingSummaryCaixasSection" class="hidden">
+                    <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i data-lucide="package-check" class="w-3.5 h-3.5 text-green-600"></i>
+                        Resumo de caixas do dia
+                    </h4>
+                    <div id="closingSummaryContainer" class="max-h-[52vh] overflow-y-auto pr-1 hide-scrollbar"></div>
+                </div>
             </div>
 
             <!-- Botões de ação -->
@@ -1161,55 +1327,11 @@
     </div>
 
     <script>
-        const dbOperacoesTrator = [
-            "Levantar canteiros",
-            "Transporte de material",
-            "Roçagem",
-            "Incorporação",
-            "Concluir roçagem",
-            "Roçar as laterais",
-            "Rosagens nas ruas",
-            "Gradeação",
-            "Adubação",
-            "Pulverização"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const dbOperacoesTrator = [];
 
-        const dbOperacoesPacking = [
-            "Processamento de Tomates",
-            "Processamento de Brócolis",
-            "Processamento de Pepino",
-            "Processamento de Couve-Flor",
-            "Auxiliar Produção",
-            "Pesagem de Caixas de Produção",
-            "Limpeza do Packing",
-            "Expedição",
-            "Processar Etiquetas",
-            "Máquina Flowpack"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const dbOperacoesPacking = [];
 
-        const dbOperacoesColaboradores = [
-            "Plantio de Brócolis",
-            "Plantio de Mudas",
-            "Plantio de Capim",
-            "Instalação de Microaspersores",
-            "Retirada de Microaspersores",
-            "Capina Manual",
-            "Limpeza de Mato com Roçadeira",
-            "Adubação",
-            "Espalhar Baganas",
-            "Espalhar Esterco",
-            "Instalação de Torneiras",
-            "Instalação de Venturi",
-            "Reparo de Canos Quebrados",
-            "Reparo de Mangueiras",
-            "Reparo de Microaspersores",
-            "Reparo Geral",
-            "Irrigação",
-            "Limpeza de Área",
-            "Preparo de Solo",
-            "Limpeza de Canteiros",
-            "Cobertura de Solo"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const dbOperacoesColaboradores = [];
 
         const dbCategoriasInsumos = [
             "Adubo",
@@ -1228,23 +1350,6 @@
             "Mateus Paulo",
             "Cláudio Rodrigues",
             "Regilene Alves"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-        const dbUnidadesProducao = [
-            "Cumbucas",
-            "Unidades",
-            "Caixas",
-            "Pallets",
-            "Kg",
-            "Sacas",
-            "Litros",
-            "Bandejas"
-        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-        const dbClientesPedidos = [
-            "Perboni",
-            "Trielo",
-            "Mix Mateus"
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
         const dbOperadores = [
@@ -2579,13 +2684,17 @@
         async function loadPortugueseSpellChecker() {
             if (portugueseSpellCheckerPromise) return portugueseSpellCheckerPromise;
 
+            // "dictionary-pt" é um pacote feito pra Node (lê os arquivos .aff/.dic do
+            // disco via fs), então importar ele direto como módulo ES no navegador
+            // quebra. Por isso buscamos os dois arquivos como texto puro e montamos o
+            // nspell manualmente — é a forma que o próprio nspell documenta pra browser.
             portugueseSpellCheckerPromise = Promise.all([
                 import('https://cdn.jsdelivr.net/npm/nspell/+esm'),
-                import('https://cdn.jsdelivr.net/npm/dictionary-pt/+esm')
-            ]).then(([nspellModule, dictionaryModule]) => {
+                fetch('https://cdn.jsdelivr.net/npm/dictionary-pt/index.aff').then(r => r.text()),
+                fetch('https://cdn.jsdelivr.net/npm/dictionary-pt/index.dic').then(r => r.text())
+            ]).then(([nspellModule, aff, dic]) => {
                 const nspell = nspellModule.default || nspellModule;
-                const dictionaryPt = dictionaryModule.default || dictionaryModule;
-                const spell = nspell(dictionaryPt);
+                const spell = nspell({ aff, dic });
                 portugueseSpellcheckDomainWords.forEach(word => spell.add(word));
                 portugueseSpellChecker = spell;
                 return spell;
@@ -2778,12 +2887,55 @@
             }
         }
 
+        // ==========================================
+        // MODO PAISAGEM (mobile): gira uma tabela/container 90° via CSS pra caber
+        // melhor quando o usuário vira o celular — ver comentário da classe
+        // .landscape-mode-active no <style> pra entender por que é pré-rotacionado
+        // em vez de só confiar no navegador reformatar sozinho.
+        // ==========================================
+
+        let _landscapeModeContainerId = null;
+
+        function toggleLandscapeMode(containerId) {
+            if (_landscapeModeContainerId === containerId) {
+                exitLandscapeMode();
+                return;
+            }
+            if (_landscapeModeContainerId) exitLandscapeMode();
+
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.classList.add('landscape-mode-active');
+            document.getElementById('landscapeModeBackdrop').classList.add('active');
+            document.getElementById('landscapeModeExitBtn').classList.add('active');
+            _landscapeModeContainerId = containerId;
+            lockBodyScroll();
+        }
+
+        function exitLandscapeMode() {
+            if (!_landscapeModeContainerId) return;
+            const container = document.getElementById(_landscapeModeContainerId);
+            if (container) container.classList.remove('landscape-mode-active');
+            document.getElementById('landscapeModeBackdrop').classList.remove('active');
+            document.getElementById('landscapeModeExitBtn').classList.remove('active');
+            _landscapeModeContainerId = null;
+            unlockBodyScroll();
+        }
+
         // Setor livre: só guarda a última escolha pra já abrir nela da próxima vez.
         // Não existe mais tela/trava de setor — o campo "Tipo de Programação" no
         // formulário já troca direto, sem confirmação extra.
         const SECTOR_STORAGE_KEY = 'spg_selectedSector';
 
         document.addEventListener("DOMContentLoaded", () => {
+            // Ao abrir/recarregar a página, várias buscas na planilha disparam ao mesmo
+            // tempo (equipes, serviços, produtos de insumos, programação do dia) — sem
+            // avisar nada, a tela fica mexendo/re-renderizando sozinha por um instante e
+            // parece travada. Esse overlay deixa claro que é só sincronização, e some
+            // assim que as buscas iniciais terminarem (com ou sem erro).
+            showLoadingOverlay('Sincronizando dados, aguarde...');
+
             const savedSector = localStorage.getItem(SECTOR_STORAGE_KEY);
             if (savedSector && programacaoConfig[savedSector]) {
                 document.getElementById('localSelect').value = savedSector;
@@ -2801,9 +2953,6 @@
             document.getElementById('packingDateContainer').classList.remove('hidden');
             if (!packingDateEl.value) packingDateEl.value = today.toISOString().split('T')[0];
 
-            loadTeams();
-            loadServicos();
-            loadInsumosSuggestionsFromHistory();
             renderDaysForm();
 
             // Carregar dados salvos do localStorage
@@ -2814,7 +2963,13 @@
             updateBtnFecharDia();
 
             updateDashSetorLabel();
-            loadProgramacaoDashboard();
+
+            Promise.allSettled([
+                loadTeams(),
+                loadServicos(),
+                loadInsumosSuggestionsFromHistory(),
+                loadProgramacaoDashboard()
+            ]).finally(hideLoadingOverlay);
         });
 
         // ==========================================
@@ -3207,6 +3362,54 @@
         let _copiedDayTasks = null;
         let _pasteDayTarget = null;
 
+        // Converte uma linha do histórico (planilha) num taskData pronto pra
+        // addTaskBlock. Sempre sem rowNumber/rowLocal: quem usa isso está criando um
+        // novo lançamento (cópia ou pendência trazida), não editando a linha original.
+        function mapHistoryRowToTaskData(row, local, statusOverride) {
+            const isColaboradores = isColaboradoresProgramacao(local);
+            const isInsumos = local === 'Insumos';
+
+            let solVal = row.programador || '';
+            let solCustomVal = '';
+            if (solVal && !dbSolicitantes.includes(solVal)) { solCustomVal = solVal; solVal = 'Outro'; }
+
+            let opVal = row.operador || '';
+            let opCustomVal = '';
+            if (!isColaboradores && opVal && !dbOperadores.includes(opVal)) { opCustomVal = opVal; opVal = 'Outro'; }
+
+            let tempo = '', tempoUnit = 'H';
+            if (!isColaboradores && row.tempo) {
+                if (String(row.tempo) === 'Indeterminado') { tempoUnit = 'Indeterminado'; }
+                else { const p = String(row.tempo).split(' '); tempo = p[0] || ''; tempoUnit = p[1] || 'H'; }
+            }
+
+            const combustivel = (!isColaboradores && row.combustivel)
+                ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '';
+
+            const { categoria: categoriaVal, categoriaCustom: categoriaCustomVal } = resolveInsumoCategoria(isInsumos, row.categoria);
+
+            return {
+                solicitante: solVal,
+                solicitanteCustom: solCustomVal,
+                operador: opVal,
+                operadorCustom: opCustomVal,
+                blocos: row.blocos || '',
+                operacoes: row.operacoes || '',
+                tempo,
+                tempoUnit,
+                combustivel,
+                categoria: categoriaVal,
+                categoriaCustom: categoriaCustomVal,
+                produtos: isInsumos && row.produto ? row.produto.split(',').map(s => s.trim()).filter(Boolean) : [],
+                alvos: resolveInsumoAlvos(isInsumos, row.alvo),
+                processaCaixas: row.processaCaixas !== false,
+                status: statusOverride || row.status || 'Em Andamento',
+                estimativa: '',
+                rowNumber: '',
+                rowLocal: '',
+            };
+        }
+
         function copyDayFromHistory(dayKey) {
             const entries = historyRows.filter(r => r.diaSemana === dayKey);
             if (!entries.length) {
@@ -3214,48 +3417,8 @@
                 return;
             }
 
-            const isColaboradores = isColaboradoresProgramacao();
-            const isInsumos = getSelectedProgramacaoType() === 'Insumos';
-            _copiedDayTasks = entries.map(row => {
-                let solVal = row.programador || '';
-                let solCustomVal = '';
-                if (solVal && !dbSolicitantes.includes(solVal)) { solCustomVal = solVal; solVal = 'Outro'; }
-
-                let opVal = row.operador || '';
-                let opCustomVal = '';
-                if (!isColaboradores && opVal && !dbOperadores.includes(opVal)) { opCustomVal = opVal; opVal = 'Outro'; }
-
-                let tempo = '', tempoUnit = 'H';
-                if (!isColaboradores && row.tempo) {
-                    if (String(row.tempo) === 'Indeterminado') { tempoUnit = 'Indeterminado'; }
-                    else { const p = String(row.tempo).split(' '); tempo = p[0] || ''; tempoUnit = p[1] || 'H'; }
-                }
-
-                const combustivel = (!isColaboradores && row.combustivel)
-                    ? String(row.combustivel).replace(/\s*L$/i, '').trim() : '';
-
-                const { categoria: categoriaVal, categoriaCustom: categoriaCustomVal } = resolveInsumoCategoria(isInsumos, row.categoria);
-
-                return {
-                    solicitante: solVal,
-                    solicitanteCustom: solCustomVal,
-                    operador: opVal,
-                    operadorCustom: opCustomVal,
-                    blocos: row.blocos || '',
-                    operacoes: row.operacoes || '',
-                    tempo,
-                    tempoUnit,
-                    combustivel,
-                    categoria: categoriaVal,
-                    categoriaCustom: categoriaCustomVal,
-                    produtos: isInsumos && row.produto ? row.produto.split(',').map(s => s.trim()).filter(Boolean) : [],
-                    alvos: resolveInsumoAlvos(isInsumos, row.alvo),
-                    status: 'Em Andamento',
-                    estimativa: '',
-                    rowNumber: '',
-                    rowLocal: '',
-                };
-            });
+            const local = getSelectedProgramacaoType();
+            _copiedDayTasks = entries.map(row => mapHistoryRowToTaskData(row, local, 'Em Andamento'));
 
             goToProgramacaoFormFromHistory();
             updatePasteButtonVisibility();
@@ -3305,7 +3468,7 @@
             const checkbox = document.getElementById(`check_${dayId}`);
             if (checkbox && !checkbox.checked) {
                 checkbox.checked = true;
-                toggleDayFields(dayId);
+                toggleDayFields(dayId, false);
             }
 
             const container = document.getElementById(`tasks_container_${dayId}`);
@@ -3313,6 +3476,136 @@
             _copiedDayTasks.forEach(task => addTaskBlock(dayId, task));
             saveToLocalStorage();
             updatePreview();
+        }
+
+        // ==========================================
+        // PENDÊNCIAS DO DIA ANTERIOR (AUTOMÁTICO)
+        // ==========================================
+        // Quando a pessoa marca um dia vazio no formulário, busca no histórico da
+        // planilha o último dia fechado desse setor e, se ele tiver serviços com
+        // status Pendente/Adiado/Em Andamento (ou seja, não concluídos), já traz
+        // esses serviços pro dia que está sendo aberto — em vez de um bloco vazio.
+        const CARRYOVER_PENDING_STATUSES = ['Pendente', 'Adiado', 'Em Andamento'];
+        let _carryoverState = { local: null, promise: null };
+        // Marca "setor::diaChave" já trazido nessa sessão de edição (aba aberta), pra
+        // não duplicar o mesmo dia pendente em dois dias diferentes do rascunho quando
+        // a pessoa abre vários dias vazios seguidos sem enviar nenhum ainda. Não usa
+        // sessionStorage de propósito: precisa reiniciar a cada F5/nova aba, senão uma
+        // checagem antiga (de quando ainda não havia nada pendente) trava as próximas
+        // pra sempre nessa aba, mesmo depois de fechar um dia com item Adiado/Pendente.
+        let _carryoverConsumedDayKeys = new Set();
+
+        // Extrai a data-alvo real (não a data de envio) do rótulo "Segunda (20/07)",
+        // usando o ano da data de registro daquela linha como âncora — corrige virada
+        // de ano (ex: registrado 30/12, dia-alvo 02/01 → ano seguinte).
+        function parseDiaSemanaDate(diaSemana, dataRegistro) {
+            const m = /\((\d{2})\/(\d{2})\)/.exec(diaSemana || '');
+            if (!m) return null;
+            const day = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+
+            let year = new Date().getFullYear();
+            const reg = /(\d{2})\/(\d{2})\/(\d{4})/.exec(dataRegistro || '');
+            if (reg) {
+                year = parseInt(reg[3], 10);
+                const regMonth = parseInt(reg[2], 10) - 1;
+                if (month - regMonth > 6) year -= 1;
+                else if (regMonth - month > 6) year += 1;
+            }
+            return new Date(year, month, day);
+        }
+
+        async function fetchLastClosedDayPendingTasks(local) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 30);
+            const toParam = d => d.toISOString().split('T')[0];
+            const params = new URLSearchParams({ startDate: toParam(start), endDate: toParam(end), local });
+            const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+            const data = await response.json();
+            if (data.status !== 'sucesso' || !Array.isArray(data.rows) || !data.rows.length) return null;
+
+            // Agrupa por diaSemana e acha o grupo com a data-alvo mais recente — não a
+            // ordem de inserção (rowNumber), porque um dia pode ser enviado/fechado fora
+            // de ordem (ex: fecha segunda-feira depois de já ter enviado terça-feira).
+            const groups = new Map();
+            data.rows.forEach(row => {
+                const key = row.diaSemana || '';
+                if (!groups.has(key)) {
+                    groups.set(key, { dayKey: key, date: parseDiaSemanaDate(key, row.dataRegistro), rows: [] });
+                }
+                groups.get(key).rows.push(row);
+            });
+
+            let latest = null;
+            groups.forEach(group => {
+                if (!group.date) return;
+                const latestRowNumber = latest && latest.rows.length ? (latest.rows[latest.rows.length - 1].rowNumber || 0) : -1;
+                const groupRowNumber = group.rows.length ? (group.rows[group.rows.length - 1].rowNumber || 0) : -1;
+                if (!latest || group.date > latest.date || (group.date.getTime() === latest.date.getTime() && groupRowNumber > latestRowNumber)) {
+                    latest = group;
+                }
+            });
+            if (!latest) return null;
+
+            const rowsOfDay = latest.rows.filter(r => CARRYOVER_PENDING_STATUSES.includes(r.status || 'Em Andamento'));
+            if (!rowsOfDay.length) return null;
+
+            return { dayKey: latest.dayKey, tasks: rowsOfDay.map(row => mapHistoryRowToTaskData(row, local)) };
+        }
+
+        // Retorna true se conseguiu preencher o dia com pendências trazidas do
+        // histórico; false se não havia nada pra trazer (cabe ao chamador então criar
+        // o bloco vazio padrão).
+        function tryCarryOverPendingTasks(dayId) {
+            const local = getSelectedProgramacaoType();
+            const container = document.getElementById(`tasks_container_${dayId}`);
+            if (!container) return Promise.resolve(false);
+
+            // Reaproveita uma busca já em andamento pro mesmo setor (dois dias vazios
+            // abertos quase ao mesmo tempo), mas sempre dispara uma busca NOVA depois
+            // que a anterior termina — assim um dia fechado no meio da sessão (com item
+            // Adiado/Pendente) já aparece pro próximo dia vazio aberto em seguida.
+            if (_carryoverState.local !== local || !_carryoverState.promise) {
+                _carryoverState = {
+                    local,
+                    promise: withTimeout(fetchLastClosedDayPendingTasks(local), 8000, 'buscar pendências do dia anterior').catch(err => {
+                        console.error('Erro ao buscar pendências do dia anterior:', err);
+                        return null;
+                    })
+                };
+            }
+            const state = _carryoverState;
+
+            return state.promise.then(result => {
+                // Libera a busca em andamento assim que ela resolve, pra próxima
+                // chamada (outro dia) partir pra uma checagem nova em vez de ficar presa.
+                if (_carryoverState === state) _carryoverState = { local: null, promise: null };
+
+                if (!result || !result.tasks.length) return false;
+
+                // Já trouxe esse mesmo dia pendente pra outro dia do rascunho atual
+                // nessa sessão — não duplica no dia seguinte.
+                const consumedKey = `${local}::${result.dayKey}`;
+                if (_carryoverConsumedDayKeys.has(consumedKey)) return false;
+
+                const checkbox = document.getElementById(`check_${dayId}`);
+                const stillWaiting = container.querySelector('.carryover-loading');
+                if (!checkbox || !checkbox.checked || !stillWaiting) return false;
+
+                _carryoverConsumedDayKeys.add(consumedKey);
+                container.innerHTML = '';
+                result.tasks.forEach(t => addTaskBlock(dayId, t));
+                saveToLocalStorage();
+                updatePreview();
+                showMessageModal(
+                    'Pendências trazidas',
+                    `${result.tasks.length} serviço(s) de ${result.dayKey} que ainda não foram concluídos foram adicionados automaticamente aqui. Revise antes de enviar.`,
+                    'info'
+                );
+                return true;
+            });
         }
 
         // ==========================================
@@ -3719,21 +4012,39 @@
             updatePreview();
         }
 
-        function toggleDayFields(dayId) {
+        function toggleDayFields(dayId, autoFill = true) {
             const checkbox = document.getElementById(`check_${dayId}`);
             const fieldsContainer = document.getElementById(`fields_${dayId}`);
             const card = document.getElementById(`card_${dayId}`);
             const tasksContainer = document.getElementById(`tasks_container_${dayId}`);
-            
+
             if (checkbox.checked) {
                 fieldsContainer.classList.remove('hidden');
                 card.classList.remove('border-slate-200', 'hover:border-slate-300');
                 card.classList.add('border-brand-500', 'ring-1', 'ring-brand-500/20', 'shadow-md');
                 checkbox.classList.replace('bg-slate-200', 'bg-white');
-                
-                // Se não houver nenhum bloco criado, cria o primeiro automaticamente
+
+                // Se não houver nenhum bloco criado, tenta primeiro trazer as pendências
+                // (Adiado/Pendente/Em Andamento) do último dia fechado desse setor; se não
+                // houver nada pra trazer, cai no bloco vazio padrão. autoFill=false é usado
+                // por quem já vai popular o dia na sequência (colar/carregar do histórico).
+                // Retorna uma Promise que só resolve quando o conteúdo do dia estiver
+                // definido de vez — quem chama (ex: o wizard) deve aguardá-la antes de
+                // deixar a pessoa avançar, senão o botão "Avançar" pode ser clicado
+                // enquanto a checagem de pendências ainda está em andamento.
                 if (tasksContainer && tasksContainer.children.length === 0) {
-                    addTaskBlock(dayId);
+                    if (autoFill) {
+                        tasksContainer.innerHTML = `<div class="carryover-loading text-center text-slate-400 text-xs italic py-6">Verificando serviços pendentes do dia anterior...</div>`;
+                        return tryCarryOverPendingTasks(dayId).then(carried => {
+                            if (!carried && tasksContainer.querySelector('.carryover-loading')) {
+                                tasksContainer.innerHTML = '';
+                                addTaskBlock(dayId);
+                                updatePreview();
+                            }
+                        });
+                    } else {
+                        addTaskBlock(dayId);
+                    }
                 }
             } else {
                 fieldsContainer.classList.add('hidden');
@@ -3741,6 +4052,7 @@
                 card.classList.remove('border-brand-500', 'ring-1', 'ring-brand-500/20', 'shadow-md');
                 checkbox.classList.replace('bg-white', 'bg-slate-200');
             }
+            return Promise.resolve();
         }
 
         function addSelectedOperacaoToTask(selectElement, taskId) {
@@ -4236,12 +4548,26 @@
             return { stage, clone };
         }
 
+        // Nenhum dos fetch() para o Google Apps Script tem timeout nativo: em rede
+        // instável (rural) a promise pode nunca se resolver nem rejeitar, travando o
+        // overlay de "Salvando..." pra sempre. withTimeout força uma rejeição depois
+        // de "ms" e o catch de quem chamou trata isso como falha normal.
+        function withTimeout(promise, ms, label) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Tempo esgotado ao ${label}.`)), ms))
+            ]);
+        }
+
         async function executeSend() {
             hideConfirmModal();
             showLoadingOverlay('Salvando e gerando a imagem, aguarde...');
-            const btnSpan = document.querySelector('button[onclick="confirmBeforeSend()"] span.hidden.sm\\:inline') || document.querySelector('button[onclick="confirmBeforeSend()"] span');
-            const originalText = btnSpan.innerText;
-            btnSpan.innerText = "Salvando e Gerando...";
+            // O botão "Gerar e Enviar" (#novaProgBtnRight) tem o onclick atribuído via
+            // JS (não como atributo HTML) e não tem <span> dentro — por isso não dá
+            // pra usar o seletor antigo baseado em button[onclick="confirmBeforeSend()"].
+            const btnRight = document.getElementById('novaProgBtnRight');
+            const originalBtnHtml = btnRight ? btnRight.innerHTML : null;
+            if (btnRight) btnRight.innerHTML = 'Salvando e Gerando...';
             const element = document.getElementById('export-wrapper');
             const EXPORT_PIXEL_RATIO = 3;
             const captureOptions = {
@@ -4332,14 +4658,14 @@
                 });
 
                 if (inserts.length > 0) {
-                    const insertResult = await sendDataToGoogleSheets(inserts, insertBlocks);
+                    const insertResult = await withTimeout(sendDataToGoogleSheets(inserts, insertBlocks), 25000, 'salvar a programação');
                     if (!insertResult || insertResult.status !== 'sucesso') {
                         showMessageModal('Falha ao salvar', 'Não foi possível salvar a programação na planilha. Verifique sua conexão e tente novamente. Nada foi gerado ainda, então clicar em "Enviar" de novo não vai duplicar nada.', 'error');
                         return;
                     }
                 }
                 if (updates.length > 0) {
-                    const updateOk = await sendUpdatesToGoogleSheets(updates);
+                    const updateOk = await withTimeout(sendUpdatesToGoogleSheets(updates), 25000, 'atualizar a programação');
                     if (!updateOk) {
                         showMessageModal('Falha ao atualizar', 'Não foi possível confirmar a atualização de alguns itens na planilha. Verifique sua conexão antes de tentar novamente.', 'error');
                         return;
@@ -4354,7 +4680,7 @@
 
                 const cloneRect = exportClone.getBoundingClientRect();
                 const safeRatio = getSafeExportPixelRatio(cloneRect.width, cloneRect.height, EXPORT_PIXEL_RATIO);
-                const dataUrl = await htmlToImage.toPng(exportClone, { ...captureOptions, pixelRatio: safeRatio });
+                const dataUrl = await withTimeout(htmlToImage.toPng(exportClone, { ...captureOptions, pixelRatio: safeRatio }), 20000, 'gerar a imagem');
                 const blob = await (await fetch(dataUrl)).blob();
 
                 const file = new File([blob], preparedShareData.filename, { type: 'image/png' });
@@ -4367,12 +4693,14 @@
                 closeProgramacaoFormModal();
             } catch (err) {
                 console.error(err);
-                showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
+                const isTimeout = err && err.message && err.message.startsWith('Tempo esgotado');
+                showMessageModal('Erro', isTimeout ? `${err.message} Verifique sua conexão e tente novamente.` : 'Falha ao gerar a imagem.', 'error');
             } finally {
                 if (exportStage && exportStage.parentNode) {
                     exportStage.parentNode.removeChild(exportStage);
                 }
-                btnSpan.innerText = originalText;
+                if (btnRight && originalBtnHtml !== null) btnRight.innerHTML = originalBtnHtml;
+                lucide.createIcons();
                 hideLoadingOverlay();
             }
         }
@@ -4674,9 +5002,14 @@
         // visualização. Duas variações: Tailwind+lucide pra tela (previewContent, que
         // é clonada já com os ícones renderizados na hora do export), e estilo inline
         // com emoji pro relatório de Encerramento, que é capturado offscreen em PNG.
-        function renderStatCardsLive(stats) {
+        function renderStatCardsLive(stats, gridClass) {
+            // gridClass é opcional: o padrão assume o card ocupando a largura inteira
+            // da tela (colunas via breakpoint de viewport). Em containers de largura
+            // fixa menor que a tela — como um modal — isso gera colunas de menos e o
+            // texto trunca, então quem chama de dentro de um modal passa um valor fixo.
+            const grid = gridClass || `grid-cols-2 sm:grid-cols-3 ${stats.length > 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`;
             return `
-            <div class="grid grid-cols-2 sm:grid-cols-3 ${stats.length > 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3">
+            <div class="grid ${grid} gap-3">
                 ${stats.map(s => `
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3 min-w-0">
                     <div class="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style="background:${s.bg};color:${s.color};">
@@ -4935,17 +5268,26 @@
             const sector = sectorSelect.value;
 
             const docEl = document.getElementById('relatorioDocument');
-            docEl.innerHTML = `<div style="text-align:center;color:#94a3b8;font-style:italic;padding:40px 0;">Carregando relatório...</div>`;
+            const cacheKey = `relatorio_${sector}_${startDate}_${endDate}`;
+            const cached = getReportCache(cacheKey);
+            if (cached) {
+                docEl.innerHTML = buildRelatorioDocumentHtml(cached, sector, startDate, endDate);
+                lucide.createIcons();
+            } else {
+                docEl.innerHTML = `<div style="text-align:center;color:#94a3b8;font-style:italic;padding:40px 0;">Carregando relatório...</div>`;
+            }
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
-            let rows = [];
+            let rows = cached || [];
             try {
                 const params = new URLSearchParams({ startDate, endDate, local: sector });
                 const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
                 rows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
+                setReportCache(cacheKey, rows);
             } catch (err) {
                 console.error('Erro ao gerar relatório:', err);
+                if (!cached) rows = [];
             }
 
             docEl.innerHTML = buildRelatorioDocumentHtml(rows, sector, startDate, endDate);
@@ -4990,14 +5332,14 @@
             return '';
         }
 
-        async function loadCalendarYearData() {
+        async function loadCalendarYearData(cacheKey) {
             const startDate = `${calendarViewYear}-01-01`;
             const endDate = `${calendarViewYear}-12-31`;
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
 
-            calendarYearDataBySector = {};
+            const freshData = {};
             await Promise.all(Object.keys(programacaoConfig).map(async (sector) => {
-                calendarYearDataBySector[sector] = {};
+                freshData[sector] = {};
                 try {
                     const params = new URLSearchParams({ startDate, endDate, local: sector });
                     const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
@@ -5006,13 +5348,15 @@
                     rows.forEach(row => {
                         const dateStr = extractDateOnly(row.dataRegistro);
                         if (!dateStr) return;
-                        if (!calendarYearDataBySector[sector][dateStr]) calendarYearDataBySector[sector][dateStr] = [];
-                        calendarYearDataBySector[sector][dateStr].push(row);
+                        if (!freshData[sector][dateStr]) freshData[sector][dateStr] = [];
+                        freshData[sector][dateStr].push(row);
                     });
                 } catch (err) {
                     console.error(`Erro ao buscar calendário (${sector}):`, err);
                 }
             }));
+            calendarYearDataBySector = freshData;
+            if (cacheKey) setReportCache(cacheKey, freshData);
         }
 
         function dayHasCalendarData(dateStr) {
@@ -5063,20 +5407,30 @@
             </div>`;
         }
 
-        async function renderCalendarYear() {
-            document.getElementById('calendarYearLabel').innerText = String(calendarViewYear);
-            document.getElementById('calendarYearGrid').innerHTML = `<div class="col-span-full text-center text-slate-500 text-xs italic py-10">Carregando...</div>`;
-
-            await loadCalendarYearData();
-
+        function renderCalendarMonthsGrid() {
             const todayStr = todayDateInputValue();
             let monthsHtml = '';
             for (let month = 0; month < 12; month++) {
                 monthsHtml += renderMiniMonthHtml(calendarViewYear, month, todayStr);
             }
-
             document.getElementById('calendarYearGrid').innerHTML = monthsHtml;
             lucide.createIcons();
+        }
+
+        async function renderCalendarYear() {
+            document.getElementById('calendarYearLabel').innerText = String(calendarViewYear);
+
+            const cacheKey = `calendario_${calendarViewYear}`;
+            const cached = getReportCache(cacheKey);
+            if (cached) {
+                calendarYearDataBySector = cached;
+                renderCalendarMonthsGrid();
+            } else {
+                document.getElementById('calendarYearGrid').innerHTML = `<div class="col-span-full text-center text-slate-500 text-xs italic py-10">Carregando...</div>`;
+            }
+
+            await loadCalendarYearData(cacheKey);
+            renderCalendarMonthsGrid();
         }
 
         function onCalendarDayClick(dateStr) {
@@ -5212,9 +5566,21 @@
                 showMessageModal('Escolha um dia', 'Selecione um dia da semana pra continuar.', 'info');
                 return;
             }
+            // Trava de segurança: mesmo que algo chame novaProgWizardNext() direto
+            // (sem passar pelo await de selectProgramacaoDay), não deixa avançar
+            // enquanto a checagem de pendências do dia anterior ainda está rodando —
+            // senão o placeholder de "Verificando..." conta como bloco preenchido e a
+            // pessoa segue pra próxima etapa sem nenhum serviço de verdade no dia.
+            if ((stepKey === 'dia' || stepKey === 'servicos') && _novaProgSelectedDayId) {
+                const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
+                if (tasksContainer && tasksContainer.querySelector('.carryover-loading')) {
+                    showMessageModal('Aguarde um instante', 'Ainda estamos verificando se há serviços pendentes do dia anterior pra trazer pra esse dia.', 'info');
+                    return;
+                }
+            }
             if (stepKey === 'servicos') {
                 const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
-                if (!tasksContainer || tasksContainer.children.length === 0) {
+                if (!tasksContainer || tasksContainer.querySelectorAll('.task-block').length === 0) {
                     showMessageModal('Adicione um serviço', 'Adicione pelo menos um bloco de serviço pra continuar.', 'info');
                     return;
                 }
@@ -5271,7 +5637,33 @@
             lucide.createIcons();
         }
 
-        function selectProgramacaoDay(dayId) {
+        // Trava o botão "Avançar" e a grade de dias enquanto a checagem de pendências
+        // do dia anterior ainda está rodando, pra ninguém clicar "Avançar" antes dela
+        // terminar (o clique acontecia rápido demais e passava pra próxima etapa com
+        // o placeholder de "Verificando..." no lugar dos serviços de verdade).
+        function setNovaProgAdvancing(isWaiting) {
+            const btnRight = document.getElementById('novaProgBtnRight');
+            const grid = document.getElementById('novaProgDayPickerGrid');
+            if (btnRight) {
+                btnRight.disabled = isWaiting;
+                btnRight.classList.toggle('opacity-50', isWaiting);
+                btnRight.classList.toggle('pointer-events-none', isWaiting);
+                if (isWaiting) {
+                    if (btnRight.dataset.prevHtml === undefined) btnRight.dataset.prevHtml = btnRight.innerHTML;
+                    btnRight.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Verificando pendências...';
+                } else if (btnRight.dataset.prevHtml !== undefined) {
+                    btnRight.innerHTML = btnRight.dataset.prevHtml;
+                    delete btnRight.dataset.prevHtml;
+                }
+            }
+            if (grid) {
+                grid.classList.toggle('pointer-events-none', isWaiting);
+                grid.classList.toggle('opacity-60', isWaiting);
+            }
+            lucide.createIcons();
+        }
+
+        async function selectProgramacaoDay(dayId) {
             // Força exatamente um dia marcado por vez: desmarca/colapsa qualquer outro
             // dia que estivesse marcado antes de marcar o escolhido.
             daysOfWeek.forEach(day => {
@@ -5285,9 +5677,10 @@
             });
 
             const checkbox = document.getElementById(`check_${dayId}`);
+            let dayReady = Promise.resolve();
             if (!checkbox.checked) {
                 checkbox.checked = true;
-                toggleDayFields(dayId);
+                dayReady = toggleDayFields(dayId) || Promise.resolve();
             }
 
             _novaProgSelectedDayId = dayId;
@@ -5296,9 +5689,19 @@
 
             // Escolher o dia já avança pra etapa de Serviços — evita um clique extra em
             // "Avançar" logo depois de tocar no dia (importante sobretudo pra quem acabou
-            // de copiar uma programação do Histórico e só quer colar em outra data).
+            // de copiar uma programação do Histórico e só quer colar em outra data). Mas
+            // só avança depois que a checagem de pendências do dia anterior terminar —
+            // enquanto isso, trava o botão pra pessoa não clicar antes da hora.
             if (novaProgWizardSteps[novaProgWizardStepIndex] === 'dia') {
-                novaProgWizardNext();
+                setNovaProgAdvancing(true);
+                await dayReady;
+                setNovaProgAdvancing(false);
+                // A seleção pode ter mudado enquanto esperava (a pessoa clicou em outro
+                // dia antes da checagem anterior terminar) — só avança se ainda for a
+                // mesma escolha e a etapa não tiver mudado nesse meio tempo.
+                if (_novaProgSelectedDayId === dayId && novaProgWizardSteps[novaProgWizardStepIndex] === 'dia') {
+                    novaProgWizardNext();
+                }
             } else {
                 renderNovaProgDayPicker();
             }
@@ -5319,6 +5722,33 @@
             showOnlySelectedDayCard(dayId);
             novaProgWizardStepIndex = novaProgWizardSteps.indexOf('servicos');
             updateNovaProgWizardStep();
+        }
+
+        // ==========================================
+        // CACHE LOCAL DE LEITURAS DA PLANILHA
+        // ==========================================
+        // Todas as telas que só leem dados (Programação, Produtividade, Relatórios,
+        // Calendário, Histórico) guardam a última resposta no localStorage por chave
+        // (setor/data/período). Ao reabrir a tela, o cache é mostrado na hora, e a
+        // busca de verdade acontece por trás — sem cache, era só "Carregando..." toda
+        // vez, mesmo pra dados que não tinham mudado.
+        const REPORT_CACHE_PREFIX = 'spg_reportCache_';
+
+        function getReportCache(key) {
+            try {
+                const raw = localStorage.getItem(REPORT_CACHE_PREFIX + key);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function setReportCache(key, value) {
+            try {
+                localStorage.setItem(REPORT_CACHE_PREFIX + key, JSON.stringify(value));
+            } catch (e) {
+                // localStorage cheio ou indisponível: sem cache dessa vez, sem problema.
+            }
         }
 
         // ==========================================
@@ -5364,8 +5794,16 @@
             const statCardsEl = document.getElementById('dashStatCards');
             const tableEl = document.getElementById('dashTableContainer');
 
-            statCardsEl.innerHTML = `<div class="text-center text-slate-400 text-sm italic py-6 bg-white rounded-2xl border border-slate-200 shadow-sm">Carregando programação...</div>`;
-            tableEl.innerHTML = '';
+            const cacheKey = `programacao_${local}_${selectedDate}`;
+            const cached = getReportCache(cacheKey);
+            if (cached) {
+                dashboardRows = cached;
+                renderProgramacaoDashboard();
+                updateBtnFecharDia();
+            } else {
+                statCardsEl.innerHTML = `<div class="text-center text-slate-400 text-sm italic py-6 bg-white rounded-2xl border border-slate-200 shadow-sm">Carregando programação...</div>`;
+                tableEl.innerHTML = '';
+            }
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
@@ -5373,9 +5811,10 @@
                 const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
                 dashboardRows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
+                setReportCache(cacheKey, dashboardRows);
             } catch (err) {
                 console.error('Erro ao buscar programação do dia:', err);
-                dashboardRows = [];
+                if (!cached) dashboardRows = [];
             }
 
             const equipeSelect = document.getElementById('dashFilterEquipe');
@@ -5388,6 +5827,7 @@
             equipeSelect.value = sortedNames.includes(currentEquipeValue) ? currentEquipeValue : '';
 
             renderProgramacaoDashboard();
+            updateBtnFecharDia();
         }
 
         // Constrói o HTML dos cards de estatística + tabela pra um conjunto de linhas já
@@ -5541,6 +5981,7 @@
 
         let produtividadeRows = [];
         let produtividadeMode = 'colaborador';
+        let _produtividadeColaboradoresCache = [];
 
         // Jornada simulada pra calcular produtividade por hora (caixas/h), já que dias
         // trabalhados sozinho não é uma comparação justa entre quem tem mais ou menos
@@ -5564,8 +6005,15 @@
             const endInput = document.getElementById('prodFilterEnd');
             if (!startInput || !endInput) return;
 
-            document.getElementById('prodStatCards').innerHTML = '';
-            document.getElementById('prodTableContainer').innerHTML = `<div class="text-center text-slate-400 text-sm italic py-14 bg-white rounded-2xl border border-slate-200 shadow-sm">Carregando estatísticas...</div>`;
+            const cacheKey = `produtividade_${startInput.value}_${endInput.value}`;
+            const cached = getReportCache(cacheKey);
+            if (cached) {
+                produtividadeRows = cached;
+                renderProdutividadeStats();
+            } else {
+                document.getElementById('prodStatCards').innerHTML = '';
+                document.getElementById('prodTableContainer').innerHTML = `<div class="text-center text-slate-400 text-sm italic py-14 bg-white rounded-2xl border border-slate-200 shadow-sm">Carregando estatísticas...</div>`;
+            }
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
@@ -5573,9 +6021,10 @@
                 const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
                 produtividadeRows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
+                setReportCache(cacheKey, produtividadeRows);
             } catch (err) {
                 console.error('Erro ao buscar controle de colaboradores:', err);
-                produtividadeRows = [];
+                if (!cached) produtividadeRows = [];
             }
             renderProdutividadeStats();
         }
@@ -5642,12 +6091,231 @@
             ];
             document.getElementById('prodStatCards').innerHTML = renderStatCardsLive(statCards);
 
+            renderProdutividadeTrendChart(produtividadeRows, search);
+
             document.getElementById('prodDestaquesContainer').innerHTML = renderProdutividadeDestaques(colaboradoresRanked, equipesRanked);
+
+            // Guardado pro Perfil Individual (openProdutividadeProfile) reaproveitar o
+            // mesmo agregado (caixas/dias/feitos/porHora) sem recalcular tudo de novo.
+            _produtividadeColaboradoresCache = colaboradoresRanked;
 
             const tableEl = document.getElementById('prodTableContainer');
             tableEl.innerHTML = produtividadeMode === 'colaborador'
                 ? renderProdutividadeColaboradorTable(colaboradoresRanked)
                 : renderProdutividadeEquipeTable(equipesRanked);
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // GRÁFICO DE TENDÊNCIA DIÁRIA (caixas produzidas por dia no período)
+        // ==========================================
+
+        // Todos os dias entre as duas datas do filtro (inclusive), já na mesma
+        // formatação "dd/mm/yyyy" usada em row.data — dias sem produção entram como
+        // zero, pra a queda aparecer no gráfico em vez de simplesmente sumir.
+        function isoDateRange(startIso, endIso) {
+            const dates = [];
+            if (!startIso || !endIso) return dates;
+            const [sy, sm, sd] = startIso.split('-').map(Number);
+            const [ey, em, ed] = endIso.split('-').map(Number);
+            const cursor = new Date(sy, sm - 1, sd);
+            const end = new Date(ey, em - 1, ed);
+            while (cursor <= end) {
+                const y = cursor.getFullYear();
+                const m = String(cursor.getMonth() + 1).padStart(2, '0');
+                const d = String(cursor.getDate()).padStart(2, '0');
+                dates.push({ key: `${d}/${m}/${y}`, label: `${d}/${m}` });
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            return dates;
+        }
+
+        // Arredonda o teto do eixo Y pra um número "redondo" (1/2/5 × potência de 10),
+        // pra as linhas de grade caírem em valores fáceis de ler.
+        function niceAxisMax(value) {
+            if (value <= 0) return 1;
+            const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+            const residual = value / magnitude;
+            let niceResidual;
+            if (residual <= 1) niceResidual = 1;
+            else if (residual <= 2) niceResidual = 2;
+            else if (residual <= 5) niceResidual = 5;
+            else niceResidual = 10;
+            return niceResidual * magnitude;
+        }
+
+        // Monta o card de um gráfico de linha (grade, área, linha, pontos, eixos) pra
+        // uma lista de pontos {label, value}. Reaproveitado tanto pelo total do dia
+        // (todo mundo) quanto pelo gráfico individual do Perfil de Produtividade — só
+        // muda a cor, o título e os pontos. Retorna { html, geom, points }; geom vem
+        // null quando não há dado pra desenhar (chamador não deve tentar ligar o hover).
+        function buildTrendChartCardHtml(points, { idPrefix, color = '#16a34a', title = '', subtitle = '', unit = 'cx' }) {
+            const maxVal = Math.max(...points.map(p => p.value), 0);
+
+            const headerHtml = `
+                <div class="flex items-center justify-between gap-3 mb-1">
+                    <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <i data-lucide="trending-up" class="w-3.5 h-3.5" style="color:${color}"></i> ${escapeHtml(title)}
+                    </h3>
+                    <span class="text-[10px] font-bold text-slate-400">${points.length} dia(s)</span>
+                </div>
+                ${subtitle ? `<p class="text-[11px] text-slate-400 font-medium mb-3">${escapeHtml(subtitle)}</p>` : ''}`;
+
+            if (!points.length || maxVal === 0) {
+                return {
+                    html: `${headerHtml}<p class="text-slate-400 text-xs italic py-6 text-center">Sem dado nesse período pra mostrar a tendência.</p>`,
+                    geom: null, points
+                };
+            }
+
+            const niceMax = niceAxisMax(maxVal);
+            const steps = 4;
+
+            const pointGap = points.length > 40 ? 28 : (points.length > 20 ? 34 : 44);
+            const chartW = Math.max(320, (points.length - 1) * pointGap + 32);
+            const chartH = 170;
+            const padLeft = 34, padRight = 16, padTop = 12, padBottom = 26;
+            const plotW = chartW - padLeft - padRight;
+            const plotH = chartH - padTop - padBottom;
+
+            const xAt = i => padLeft + (points.length > 1 ? (i / (points.length - 1)) * plotW : plotW / 2);
+            const yAt = v => padTop + plotH - (v / niceMax) * plotH;
+
+            const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`).join(' ');
+            const areaPath = `${linePath} L ${xAt(points.length - 1).toFixed(1)} ${(padTop + plotH).toFixed(1)} L ${xAt(0).toFixed(1)} ${(padTop + plotH).toFixed(1)} Z`;
+
+            const labelEvery = Math.max(1, Math.ceil(points.length / 12));
+
+            const gridLinesHtml = Array.from({ length: steps + 1 }, (_, i) => {
+                const v = (niceMax / steps) * i;
+                const y = yAt(v);
+                return `
+                    <line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${chartW - padRight}" y2="${y.toFixed(1)}" stroke="#e1e0d9" stroke-width="1"></line>
+                    <text x="${padLeft - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" font-weight="700" fill="#94a3b8">${Math.round(v)}</text>`;
+            }).join('');
+
+            const xLabelsHtml = points.map((p, i) => {
+                if (i % labelEvery !== 0 && i !== points.length - 1) return '';
+                return `<text x="${xAt(i).toFixed(1)}" y="${chartH - 8}" text-anchor="middle" font-size="9" font-weight="700" fill="#94a3b8">${p.label}</text>`;
+            }).join('');
+
+            const dotsHtml = points.map((p, i) => `
+                <circle class="prod-trend-dot" data-index="${i}" cx="${xAt(i).toFixed(1)}" cy="${yAt(p.value).toFixed(1)}" r="3.5" fill="${color}" stroke="#fff" stroke-width="2"></circle>
+            `).join('');
+
+            const html = `
+                ${headerHtml}
+                <div class="relative overflow-x-auto hide-scrollbar" id="${idPrefix}Scroll">
+                    <svg id="${idPrefix}Svg" width="${chartW}" height="${chartH}" viewBox="0 0 ${chartW} ${chartH}" class="block" style="min-width:${chartW}px;">
+                        ${gridLinesHtml}
+                        <path d="${areaPath}" fill="${color}" fill-opacity="0.1" stroke="none"></path>
+                        <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        ${dotsHtml}
+                        ${xLabelsHtml}
+                        <line id="${idPrefix}Crosshair" x1="0" y1="${padTop}" x2="0" y2="${padTop + plotH}" stroke="#c3c2b7" stroke-width="1" class="hidden"></line>
+                    </svg>
+                    <div id="${idPrefix}Tooltip" class="hidden absolute pointer-events-none bg-slate-800 text-white rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap z-10"></div>
+                </div>`;
+
+            return { html, geom: { chartW, padLeft, plotW }, points };
+        }
+
+        // Crosshair + tooltip: acompanha o ponteiro, encaixa no dia mais próximo (nunca
+        // precisa acertar exatamente a linha/o ponto) e mostra os detalhes daquele dia.
+        function wireTrendChartHover(points, idPrefix, geom, unit = 'cx') {
+            const svg = document.getElementById(`${idPrefix}Svg`);
+            const scrollWrap = document.getElementById(`${idPrefix}Scroll`);
+            const tooltip = document.getElementById(`${idPrefix}Tooltip`);
+            const crosshair = document.getElementById(`${idPrefix}Crosshair`);
+            if (!svg || !tooltip || !crosshair) return;
+
+            const { padLeft, plotW, chartW } = geom;
+
+            function showAt(index) {
+                const p = points[index];
+                if (!p) return;
+                const x = padLeft + (points.length > 1 ? (index / (points.length - 1)) * plotW : plotW / 2);
+                crosshair.setAttribute('x1', x.toFixed(1));
+                crosshair.setAttribute('x2', x.toFixed(1));
+                crosshair.classList.remove('hidden');
+
+                svg.querySelectorAll('.prod-trend-dot').forEach(dot => {
+                    dot.setAttribute('r', dot.dataset.index === String(index) ? '5' : '3.5');
+                });
+
+                tooltip.innerHTML = '';
+                const strong = document.createElement('div');
+                strong.className = 'text-[12px] font-black';
+                strong.textContent = `${p.value} ${unit}`;
+                const small = document.createElement('div');
+                small.className = 'text-[9px] text-slate-300 font-bold';
+                small.textContent = p.label;
+                tooltip.appendChild(strong);
+                tooltip.appendChild(small);
+                tooltip.classList.remove('hidden');
+
+                const svgRect = svg.getBoundingClientRect();
+                const wrapRect = scrollWrap.getBoundingClientRect();
+                const scale = svgRect.width / chartW;
+                const left = (x * scale) + (svgRect.left - wrapRect.left) + scrollWrap.scrollLeft;
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = '0px';
+                tooltip.style.transform = 'translate(-50%, -100%)';
+            }
+
+            function hide() {
+                crosshair.classList.add('hidden');
+                tooltip.classList.add('hidden');
+                svg.querySelectorAll('.prod-trend-dot').forEach(dot => dot.setAttribute('r', '3.5'));
+            }
+
+            function handleMove(clientX) {
+                const rect = svg.getBoundingClientRect();
+                const scale = chartW / rect.width;
+                const xInSvg = (clientX - rect.left) * scale;
+                const ratio = points.length > 1 ? (xInSvg - padLeft) / plotW : 0;
+                const index = Math.round(Math.min(Math.max(ratio, 0), 1) * (points.length - 1));
+                showAt(index);
+            }
+
+            svg.addEventListener('pointermove', e => handleMove(e.clientX));
+            svg.addEventListener('pointerdown', e => handleMove(e.clientX));
+            svg.addEventListener('pointerleave', hide);
+        }
+
+        function renderProdutividadeTrendChart(rows, search) {
+            const container = document.getElementById('prodTrendChartContainer');
+            if (!container) return;
+
+            const startInput = document.getElementById('prodFilterStart');
+            const endInput = document.getElementById('prodFilterEnd');
+            const points0 = isoDateRange(startInput?.value, endInput?.value);
+
+            if (points0.length < 2) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const totalsByDate = {};
+            rows.forEach(row => {
+                const nome = row.colaborador || '—';
+                const equipe = row.equipe || 'Sem equipe';
+                if (search && !nome.toLowerCase().includes(search) && !equipe.toLowerCase().includes(search)) return;
+                if (!row.data) return;
+                const caixas = parseFloat(String(row.caixas || '').replace(',', '.')) || 0;
+                totalsByDate[row.data] = (totalsByDate[row.data] || 0) + caixas;
+            });
+
+            const points = points0.map(d => ({ ...d, value: totalsByDate[d.key] || 0 }));
+            const { html, geom } = buildTrendChartCardHtml(points, {
+                idPrefix: 'prodTrend',
+                color: '#16a34a',
+                title: 'Tendência de produção diária',
+                subtitle: 'Caixas processadas por dia no período selecionado.'
+            });
+
+            container.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">${html}</div>`;
+            if (geom) wireTrendChartHover(points, 'prodTrend', geom);
             lucide.createIcons();
         }
 
@@ -5708,7 +6376,7 @@
                 const barWidth = Math.round((r.caixas / maxCaixas) * 100);
                 const ultimoFeito = r.feitos.length ? r.feitos[r.feitos.length - 1] : null;
                 return `
-                <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors align-top">
+                <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors align-top cursor-pointer" onclick="openProdutividadeProfile(${i})" title="Ver perfil individual">
                     <td class="p-4 text-center text-slate-400 font-black text-xs">${i + 1}º</td>
                     <td class="p-4">
                         <div class="flex items-center gap-2.5">
@@ -5725,25 +6393,122 @@
                     <td class="p-4 text-center text-slate-600 font-bold text-sm">${r.dias}</td>
                     <td class="p-4 text-center text-amber-700 font-black text-sm">${r.porHora.toFixed(1)}</td>
                     <td class="p-4 text-slate-500 text-xs">${ultimoFeito ? escapeHtml(ultimoFeito.texto) : '—'}</td>
+                    <td class="p-4 text-center"><i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 inline-block"></i></td>
                 </tr>`;
             }).join('');
 
             return `
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-                <table class="w-full min-w-[700px] text-left border-collapse">
+                <table class="w-full min-w-[760px] text-left border-collapse">
                     <thead>
                         <tr class="bg-brand-100 text-brand-800 text-[10px] uppercase tracking-widest border-b-2 border-brand-200">
-                            <th class="p-4 font-black w-[6%]">#</th>
-                            <th class="p-4 font-black w-[20%]">Colaborador</th>
-                            <th class="p-4 font-black w-[22%]">Caixas processadas</th>
-                            <th class="p-4 font-black text-center w-[10%]">Dias</th>
-                            <th class="p-4 font-black text-center w-[12%]">Caixas/h</th>
-                            <th class="p-4 font-black w-[30%]">Último "o que fez"</th>
+                            <th class="p-4 font-black w-[5%]">#</th>
+                            <th class="p-4 font-black w-[17%]">Colaborador</th>
+                            <th class="p-4 font-black w-[19%]">Caixas processadas</th>
+                            <th class="p-4 font-black text-center w-[9%]">Dias</th>
+                            <th class="p-4 font-black text-center w-[11%]">Caixas/h</th>
+                            <th class="p-4 font-black w-[28%]">Último "o que fez"</th>
+                            <th class="p-4 font-black w-[4%]"></th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>
             </div>`;
+        }
+
+        // ==========================================
+        // PERFIL INDIVIDUAL DE PRODUTIVIDADE (clique numa linha da tabela "Por
+        // Colaborador") — junta tendência diária, ponto forte da semana e o histórico
+        // de "o que fez" de uma pessoa só, pro supervisor avaliar pontos fortes.
+        // ==========================================
+
+        function openProdutividadeProfile(index) {
+            const person = _produtividadeColaboradoresCache[index];
+            if (!person) return;
+
+            const startInput = document.getElementById('prodFilterStart');
+            const endInput = document.getElementById('prodFilterEnd');
+            const points0 = isoDateRange(startInput?.value, endInput?.value);
+
+            const totalsByDate = {};
+            produtividadeRows.forEach(row => {
+                if ((row.colaborador || '—') !== person.nome) return;
+                if (!row.data) return;
+                const caixas = parseFloat(String(row.caixas || '').replace(',', '.')) || 0;
+                totalsByDate[row.data] = (totalsByDate[row.data] || 0) + caixas;
+            });
+            const points = points0.map(d => ({ ...d, value: totalsByDate[d.key] || 0 }));
+
+            // Média por dia da semana (0=Domingo..6=Sábado), pra achar em qual dia essa
+            // pessoa costuma render mais — só considera dias em que ela de fato trabalhou.
+            const weekdayTotals = [0, 0, 0, 0, 0, 0, 0];
+            const weekdayDays = [0, 0, 0, 0, 0, 0, 0];
+            let bestDay = null;
+            points.forEach(p => {
+                if (p.value <= 0) return;
+                if (!bestDay || p.value > bestDay.value) bestDay = p;
+                const [d, m, y] = p.key.split('/').map(Number);
+                const weekday = new Date(y, m - 1, d).getDay();
+                weekdayTotals[weekday] += p.value;
+                weekdayDays[weekday]++;
+            });
+            const weekdayAverages = weekdayTotals.map((total, i) => weekdayDays[i] ? total / weekdayDays[i] : 0);
+            const hasWeekdayData = weekdayAverages.some(v => v > 0);
+            const bestWeekdayIndex = weekdayAverages.reduce((best, v, i) => v > weekdayAverages[best] ? i : best, 0);
+
+            const mediaDia = person.dias ? person.caixas / person.dias : 0;
+
+            document.getElementById('prodProfileName').textContent = person.nome;
+            document.getElementById('prodProfileAvatar').innerHTML = initialsAvatarHtml(person.nome);
+
+            const statCards = [
+                { icon: 'package-check', bg: '#dcfce7', color: '#16a34a', value: person.caixas, label: 'Caixas no período', sublabel: `${person.dias} dia(s)` },
+                { icon: 'bar-chart-3', bg: '#dbeafe', color: '#2563eb', value: mediaDia.toFixed(1), label: 'Média/dia', sublabel: 'Caixas por dia' },
+                { icon: 'zap', bg: '#fef3c7', color: '#d97706', value: person.porHora.toFixed(1), label: 'Caixas/hora', sublabel: `Jornada de ${WORKDAY_HOURS}h` },
+                { icon: 'star', bg: '#ede9fe', color: '#7c3aed', value: bestDay ? bestDay.value : 0, label: 'Melhor dia', sublabel: bestDay ? bestDay.label : '—' },
+            ];
+            document.getElementById('prodProfileStatCards').innerHTML = renderStatCardsLive(statCards, 'grid-cols-2 sm:grid-cols-4');
+
+            const { html, geom } = buildTrendChartCardHtml(points, {
+                idPrefix: 'prodProfileTrend',
+                color: '#2563eb',
+                title: 'Produção diária dessa pessoa',
+                subtitle: 'Caixas processadas dia a dia, no mesmo período do filtro.'
+            });
+            document.getElementById('prodProfileTrendContainer').innerHTML = html;
+            if (geom) wireTrendChartHover(points, 'prodProfileTrend', geom);
+
+            document.getElementById('prodProfileWeekday').innerHTML = hasWeekdayData ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-4">
+                    <h3 class="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <i data-lucide="calendar-check-2" class="w-3.5 h-3.5"></i> Ponto forte da semana
+                    </h3>
+                    <p class="text-sm text-slate-700 font-bold">Rende mais em <span class="text-amber-700">${CALENDAR_WEEKDAY_NAMES[bestWeekdayIndex]}</span>, com média de ${weekdayAverages[bestWeekdayIndex].toFixed(1)} caixas nesse dia.</p>
+                </div>` : '';
+
+            const feitosSorted = [...person.feitos]
+                .filter(f => f.texto)
+                .sort((a, b) => {
+                    const [ad, am, ay] = String(a.data || '').split('/').map(Number);
+                    const [bd, bm, by] = String(b.data || '').split('/').map(Number);
+                    return new Date(by || 0, (bm || 1) - 1, bd || 0) - new Date(ay || 0, (am || 1) - 1, ad || 0);
+                });
+            document.getElementById('prodProfileFeitos').innerHTML = feitosSorted.length
+                ? feitosSorted.map(f => `
+                    <div class="flex items-start gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                        <span class="shrink-0 text-[10px] font-black text-slate-400 w-16 pt-0.5">${escapeHtml(f.data || '--')}</span>
+                        <p class="text-sm text-slate-700 leading-snug">${escapeHtml(f.texto)}</p>
+                    </div>`).join('')
+                : `<p class="text-slate-400 text-xs italic py-4 text-center">Nenhum "o que fez" registrado nesse período.</p>`;
+
+            document.getElementById('prodProfileModal').classList.remove('hidden');
+            lockBodyScroll();
+            lucide.createIcons();
+        }
+
+        function closeProdutividadeProfile() {
+            document.getElementById('prodProfileModal').classList.add('hidden');
+            unlockBodyScroll();
         }
 
         function renderProdutividadeEquipeTable(rows) {
@@ -5819,9 +6584,18 @@
             const emptyEl = document.getElementById('historyEmpty');
             const loadingEl = document.getElementById('historyLoading');
 
-            resultsEl.classList.add('hidden');
-            emptyEl.classList.add('hidden');
-            loadingEl.classList.remove('hidden');
+            const cacheKey = `historico_${local}_${startDate}_${endDate}`;
+            const cached = getReportCache(cacheKey);
+            if (cached && cached.length) {
+                resultsEl.classList.remove('hidden');
+                emptyEl.classList.add('hidden');
+                loadingEl.classList.add('hidden');
+                renderHistoryResults(cached, local);
+            } else {
+                resultsEl.classList.add('hidden');
+                emptyEl.classList.add('hidden');
+                loadingEl.classList.remove('hidden');
+            }
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
 
@@ -5833,19 +6607,23 @@
                 loadingEl.classList.add('hidden');
 
                 if (data.status === 'erro') {
-                    showMessageModal('Erro', 'Não foi possível buscar o histórico: ' + data.mensagem, 'error');
+                    if (!cached) showMessageModal('Erro', 'Não foi possível buscar o histórico: ' + data.mensagem, 'error');
                     return;
                 }
 
-                if (!data.rows || data.rows.length === 0) {
+                const rows = data.rows || [];
+                setReportCache(cacheKey, rows);
+
+                if (!rows.length) {
+                    resultsEl.classList.add('hidden');
                     emptyEl.classList.remove('hidden');
                     return;
                 }
 
-                renderHistoryResults(data.rows, local);
+                renderHistoryResults(rows, local);
             } catch (err) {
                 loadingEl.classList.add('hidden');
-                showMessageModal('Erro', 'Falha ao conectar com o servidor. Verifique sua conexão.', 'error');
+                if (!cached) showMessageModal('Erro', 'Falha ao conectar com o servidor. Verifique sua conexão.', 'error');
                 console.error(err);
             }
         }
@@ -5887,7 +6665,7 @@
 
             if (!checkbox.checked) {
                 checkbox.checked = true;
-                toggleDayFields(dayId);
+                toggleDayFields(dayId, false);
             }
 
             document.getElementById(`tasks_container_${dayId}`).innerHTML = '';
@@ -6129,36 +6907,95 @@
         // ENCERRAMENTO DO DIA - SPG PACKING
         // ==========================================
 
+        // Só faz sentido fechar o dia se a data/setor selecionados no filtro da
+        // Programação já tiverem algum serviço enviado — senão não há o que encerrar.
         function updateBtnFecharDia() {
+            const hasServicos = dashboardRows.length > 0;
             document.querySelectorAll('.btn-fechar-dia').forEach(btn => {
-                btn.classList.remove('hidden');
-                btn.classList.add('flex');
+                btn.classList.toggle('hidden', !hasServicos);
+                btn.classList.toggle('flex', hasServicos);
             });
         }
 
-        // Etapas do encerramento: SPG Packing passa pelas 4 etapas (individual > realizado >
-        // produção > resumo de caixas); os demais setores não têm controle de caixas, então
-        // pulam direto pra "realizado" > "produção". "Realizado" e "Produção" ficaram em
-        // etapas separadas pra não sobrecarregar um card só com texto livre + produção.
-        let closingWizardSteps = ['realizado', 'producao'];
+        // Etapas do encerramento: SPG Packing passa pelas 5 etapas (individual > realizado >
+        // produção > resumo/horário); os demais setores não têm controle de caixas, então
+        // pulam direto pra "realizado" > "produção" > "resumo/horário". "Realizado" e
+        // "Produção" ficaram em etapas separadas pra não sobrecarregar um card só com texto
+        // livre + produção. "Resumo" agora também guarda o horário do dia (início, almoço,
+        // saída), então virou etapa final pra todo mundo, não só pra quem tem caixas.
+        let closingWizardSteps = ['realizado', 'producao', 'avaliacao', 'resumo'];
         let closingWizardStepIndex = 0;
 
         const CLOSING_STEP_CONTAINERS = {
             individual: 'closingStepIndividual',
             realizado: 'closingStepRealizado',
             producao: 'closingStepProducao',
+            avaliacao: 'closingStepAvaliacao',
             resumo: 'closingStepResumo'
         };
         const CLOSING_STEP_TITLES = {
             individual: 'Controle individual de equipe',
             realizado: 'O que foi feito no dia',
             producao: 'Produção do dia',
-            resumo: 'Resumo de caixas'
+            avaliacao: 'Avaliação da equipe',
+            resumo: 'Horário e resumo do dia'
         };
+
+        // Os 5 critérios que o supervisor avalia por colaborador no Encerramento do
+        // Dia — pedido explicitamente pra apoiar a análise de desempenho do RH.
+        const CLOSING_AVALIACAO_CRITERIOS = [
+            { key: 'assiduidade', label: 'Assiduidade' },
+            { key: 'organizacao', label: 'Organização' },
+            { key: 'participacao', label: 'Participação' },
+            { key: 'agilidade', label: 'Agilidade' },
+            { key: 'pontualidade', label: 'Pontualidade' },
+        ];
+
+        // Horário do dia (início/almoço/saída) é o mesmo pra equipe inteira e vale só
+        // pro dia/setor sendo encerrado — guardado por chave local pra não se perder se
+        // o modal for fechado e reaberto antes de exportar.
+        function closingHorariosStorageKey() {
+            const date = document.getElementById('packingDate')?.value || todayDateInputValue();
+            return `spg_closingHorarios_${getSelectedProgramacaoType()}_${date}`;
+        }
+
+        function saveClosingHorarios() {
+            const horarios = {
+                inicio: document.getElementById('closingHoraInicio')?.value || '',
+                saidaAlmoco: document.getElementById('closingHoraSaidaAlmoco')?.value || '',
+                voltaAlmoco: document.getElementById('closingHoraVoltaAlmoco')?.value || '',
+                saida: document.getElementById('closingHoraSaida')?.value || ''
+            };
+            localStorage.setItem(closingHorariosStorageKey(), JSON.stringify(horarios));
+        }
+
+        function loadClosingHorarios() {
+            let horarios = {};
+            try {
+                horarios = JSON.parse(localStorage.getItem(closingHorariosStorageKey()) || '{}');
+            } catch (e) {
+                horarios = {};
+            }
+            const inicioEl = document.getElementById('closingHoraInicio');
+            const saidaAlmocoEl = document.getElementById('closingHoraSaidaAlmoco');
+            const voltaAlmocoEl = document.getElementById('closingHoraVoltaAlmoco');
+            const saidaEl = document.getElementById('closingHoraSaida');
+            if (inicioEl) inicioEl.value = horarios.inicio || '';
+            if (saidaAlmocoEl) saidaAlmocoEl.value = horarios.saidaAlmoco || '';
+            if (voltaAlmocoEl) voltaAlmocoEl.value = horarios.voltaAlmoco || '';
+            if (saidaEl) saidaEl.value = horarios.saida || '';
+            return horarios;
+        }
+
+        function getClosingHorariosLabel() {
+            const h = loadClosingHorarios();
+            const parts = [h.inicio, h.saidaAlmoco, h.voltaAlmoco, h.saida].filter(Boolean);
+            return parts.join(' → ');
+        }
 
         function openClosingDayModal() {
             const isPacking = getSelectedProgramacaoType() === 'SPG Packing';
-            closingWizardSteps = isPacking ? ['individual', 'realizado', 'producao', 'resumo'] : ['realizado', 'producao'];
+            closingWizardSteps = isPacking ? ['individual', 'realizado', 'producao', 'avaliacao', 'resumo'] : ['realizado', 'producao', 'avaliacao', 'resumo'];
             closingWizardStepIndex = 0;
             renderClosingInputCards();
             updateClosingWizardStep();
@@ -6200,7 +7037,10 @@
                 btnRight.onclick = closingWizardNext;
             }
 
-            if (stepKey === 'resumo') renderClosingSummary();
+            if (stepKey === 'resumo') {
+                loadClosingHorarios();
+                renderClosingSummary();
+            }
             lucide.createIcons();
         }
 
@@ -6229,6 +7069,15 @@
 
         function renderClosingSummary() {
             const container = document.getElementById('closingSummaryContainer');
+            const caixasSection = document.getElementById('closingSummaryCaixasSection');
+            // Resumo de caixas só existe pro SPG Packing — os demais setores usam essa
+            // etapa só pro horário do dia (o bloco fica escondido inteiro nesse caso).
+            if (getSelectedProgramacaoType() !== 'SPG Packing') {
+                if (caixasSection) caixasSection.classList.add('hidden');
+                return;
+            }
+            if (caixasSection) caixasSection.classList.remove('hidden');
+
             const blocks = collectClosingBlocks();
             const collaboratorControl = collectClosingCollaboratorControl();
 
@@ -6353,6 +7202,101 @@
         // Colaboradores pra dar pra agrupar "por equipe" na página de Produtividade.
         let closingCollaboratorTeamByName = {};
 
+        // Avaliação individual (Assiduidade/Organização/Participação/Agilidade/
+        // Pontualidade): diferente do Controle Individual acima, vale pra QUALQUER
+        // setor (não só SPG Packing) — todo mundo que apareceu nos blocos do dia entra
+        // na lista, mesmo quem não processa caixas.
+        let closingAvaliacaoDraft = {};
+        let _closingAvaliacaoNames = [];
+        let _closingAvaliacaoTeamByName = {};
+
+        // Lista de colaboradores únicos dos blocos do dia, pra qualquer setor — sem o
+        // filtro de "processa caixas" do Controle Individual (que é só SPG Packing).
+        function getClosingAllCollaboratorsList(blocks) {
+            const seen = new Set();
+            const names = [];
+            const teamByName = {};
+            blocks.forEach((b, i) => {
+                const teamLabel = closingTeamLabelForBlock(b, i);
+                (b.collaborators || []).forEach(name => {
+                    if (!name) return;
+                    if (!seen.has(name)) { seen.add(name); names.push(name); }
+                    if (!(name in teamByName)) teamByName[name] = teamLabel;
+                });
+            });
+            return { names, teamByName };
+        }
+
+        function renderClosingAvaliacaoCards(blocks) {
+            const container = document.getElementById('closingAvaliacaoCards');
+            if (!container) return;
+
+            const { names, teamByName } = getClosingAllCollaboratorsList(blocks);
+            _closingAvaliacaoNames = names;
+            _closingAvaliacaoTeamByName = teamByName;
+
+            if (!names.length) {
+                container.innerHTML = `<p class="text-slate-400 text-sm italic text-center py-6 bg-slate-50 rounded-xl border border-slate-200">Nenhum colaborador nos blocos do dia pra avaliar.</p>`;
+                return;
+            }
+
+            container.innerHTML = names.map(name => {
+                const draft = closingAvaliacaoDraft[name] || {};
+                return `
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5">
+                    <div class="flex items-center gap-2.5 mb-3">
+                        ${initialsAvatarExportHtml(name, 30)}
+                        <span class="text-[13px] font-black text-slate-700 leading-tight">${escapeHtml(name)}</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2">
+                        ${CLOSING_AVALIACAO_CRITERIOS.map(c => {
+                            const selected = draft[c.key] || 0;
+                            return `
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] font-bold text-slate-500">${c.label}</span>
+                                <div class="eval-stars flex gap-0.5" data-name="${escapeHtml(name)}" data-criterio="${c.key}">
+                                    ${[1, 2, 3, 4, 5].map(n => `<button type="button" onclick="setClosingAvaliacaoStar(this, ${n})" data-value="${n}" class="eval-star text-lg leading-none transition-colors ${n <= selected ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}">★</button>`).join('')}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function setClosingAvaliacaoStar(button, value) {
+            const group = button.closest('.eval-stars');
+            if (!group) return;
+            const name = group.dataset.name;
+            const criterio = group.dataset.criterio;
+            group.querySelectorAll('.eval-star').forEach(star => {
+                const starValue = parseInt(star.dataset.value, 10);
+                star.classList.toggle('text-amber-400', starValue <= value);
+                star.classList.toggle('text-slate-300', starValue > value);
+            });
+            closingAvaliacaoDraft[name] = closingAvaliacaoDraft[name] || {};
+            closingAvaliacaoDraft[name][criterio] = value;
+        }
+
+        function collectClosingAvaliacao() {
+            return _closingAvaliacaoNames
+                .map(name => {
+                    const draft = closingAvaliacaoDraft[name] || {};
+                    const hasAny = CLOSING_AVALIACAO_CRITERIOS.some(c => draft[c.key]);
+                    if (!hasAny) return null;
+                    return {
+                        colaborador: name,
+                        equipe: _closingAvaliacaoTeamByName[name] || '',
+                        assiduidade: draft.assiduidade || '',
+                        organizacao: draft.organizacao || '',
+                        participacao: draft.participacao || '',
+                        agilidade: draft.agilidade || '',
+                        pontualidade: draft.pontualidade || ''
+                    };
+                })
+                .filter(Boolean);
+        }
+
         function saveCollaboratorControlDraft() {
             document.querySelectorAll('#closingCollaboratorCards .collab-caixas').forEach(input => {
                 const name = input.dataset.name;
@@ -6438,24 +7382,8 @@
         function renderProductionRowHtml(cardIndex, rowIndex, data = {}) {
             const produto = data.produto || '';
             const quantidade = data.quantidade || '';
-            const unidade = data.unidade || '';
-            const pedido = data.pedido || '';
             const equipeSelecionada = Array.isArray(data.equipe) ? data.equipe : [];
             const blockTeam = closingBlockTeams[cardIndex] || [];
-            const unidadeIsOutro = unidade && !dbUnidadesProducao.includes(unidade);
-            const pedidoIsOutro = pedido && !dbClientesPedidos.includes(pedido);
-
-            let unidadeHtml = '<option value="">Unidade...</option>';
-            dbUnidadesProducao.forEach(u => {
-                unidadeHtml += `<option value="${u}" ${!unidadeIsOutro && unidade === u ? 'selected' : ''}>${u}</option>`;
-            });
-            unidadeHtml += `<option value="Outro" ${unidadeIsOutro ? 'selected' : ''}>Outro</option>`;
-
-            let pedidoHtml = '<option value="">Pedido/Cliente...</option>';
-            dbClientesPedidos.forEach(p => {
-                pedidoHtml += `<option value="${escapeHtml(p)}" ${!pedidoIsOutro && pedido === p ? 'selected' : ''}>${escapeHtml(p)}</option>`;
-            });
-            pedidoHtml += `<option value="Outro" ${pedidoIsOutro ? 'selected' : ''}>Outro</option>`;
 
             // Só faz sentido perguntar "quem fez" quando o bloco tem mais de uma pessoa;
             // com uma só, a linha já é obviamente dela.
@@ -6471,22 +7399,12 @@
 
             return `
             <div class="prod-row" data-row-index="${rowIndex}">
-                <div class="prod-row-fields grid grid-cols-2 sm:grid-cols-12 gap-1.5 items-start">
-                    <input type="text" class="prod-produto col-span-2 sm:col-span-4 p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700" placeholder="Produto/Item" value="${escapeHtml(produto)}" oninput="updateClosingPreview()">
-                    <input type="text" class="prod-quantidade sm:col-span-2 p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700" placeholder="Quantidade" value="${escapeHtml(quantidade)}" oninput="updateClosingPreview()">
-                    <div class="sm:col-span-2">
-                        <select class="prod-unidade-select w-full p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700 cursor-pointer" onchange="toggleCustomInput(this); updateClosingPreview()">${unidadeHtml}</select>
-                        <input type="text" class="prod-unidade-custom ${unidadeIsOutro ? '' : 'hidden'} mt-1 w-full p-2 border border-brand-300 bg-brand-50 rounded-lg text-xs font-bold text-slate-700" placeholder="Unidade..." value="${unidadeIsOutro ? escapeHtml(unidade) : ''}" oninput="updateClosingPreview()">
-                    </div>
-                    <div class="col-span-2 sm:col-span-4 flex items-start gap-1">
-                        <div class="flex-1">
-                            <select class="prod-pedido-select w-full p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700 cursor-pointer" onchange="toggleCustomInput(this); updateClosingPreview()">${pedidoHtml}</select>
-                            <input type="text" class="prod-pedido-custom ${pedidoIsOutro ? '' : 'hidden'} mt-1 w-full p-2 border border-brand-300 bg-brand-50 rounded-lg text-xs font-bold text-slate-700" placeholder="Pedido/Cliente..." value="${pedidoIsOutro ? escapeHtml(pedido) : ''}" oninput="updateClosingPreview()">
-                        </div>
-                        <button type="button" onclick="removeProductionRow(this)" class="shrink-0 p-2 rounded-lg hover:bg-red-100 text-red-500 transition-colors">
-                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                        </button>
-                    </div>
+                <div class="prod-row-fields grid grid-cols-3 sm:grid-cols-12 gap-1.5 items-start">
+                    <input type="text" class="prod-produto col-span-2 sm:col-span-8 p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700" placeholder="Produto/Item" value="${escapeHtml(produto)}" oninput="updateClosingPreview()">
+                    <input type="text" class="prod-quantidade sm:col-span-3 p-2 border border-blue-200 rounded-lg text-xs bg-white outline-none font-bold text-slate-700" placeholder="Quantidade" value="${escapeHtml(quantidade)}" oninput="updateClosingPreview()">
+                    <button type="button" onclick="removeProductionRow(this)" class="shrink-0 p-2 rounded-lg hover:bg-red-100 text-red-500 transition-colors">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
                 </div>
                 ${teamChipsHtml}
             </div>`;
@@ -6495,10 +7413,8 @@
         function productionRowsHeaderHtml() {
             return `
             <div class="hidden sm:grid grid-cols-12 gap-1.5 px-0.5 mb-1">
-                <span class="col-span-4 text-[8px] font-black text-blue-400 uppercase tracking-wider">Produto/Item</span>
-                <span class="col-span-2 text-[8px] font-black text-blue-400 uppercase tracking-wider">Quantidade</span>
-                <span class="col-span-2 text-[8px] font-black text-blue-400 uppercase tracking-wider">Unidade</span>
-                <span class="col-span-4 text-[8px] font-black text-blue-400 uppercase tracking-wider">Pedido/Cliente</span>
+                <span class="col-span-8 text-[8px] font-black text-blue-400 uppercase tracking-wider">Produto/Item</span>
+                <span class="col-span-3 text-[8px] font-black text-blue-400 uppercase tracking-wider">Quantidade</span>
             </div>`;
         }
 
@@ -6529,22 +7445,14 @@
             return Array.from(container.querySelectorAll('.prod-row')).map(row => {
                 const produto = row.querySelector('.prod-produto')?.value.trim() || '';
                 const quantidade = row.querySelector('.prod-quantidade')?.value.trim() || '';
-                const unidadeSelect = row.querySelector('.prod-unidade-select');
-                const unidade = unidadeSelect?.value === 'Outro'
-                    ? (row.querySelector('.prod-unidade-custom')?.value.trim() || '')
-                    : (unidadeSelect?.value || '');
-                const pedidoSelect = row.querySelector('.prod-pedido-select');
-                const pedido = pedidoSelect?.value === 'Outro'
-                    ? (row.querySelector('.prod-pedido-custom')?.value.trim() || '')
-                    : (pedidoSelect?.value || '');
                 const teamChips = Array.from(row.querySelectorAll('.prod-team-chip'));
                 const activeChips = teamChips.filter(chip => chip.classList.contains('prod-team-chip-active'));
                 // Se todo mundo do bloco está marcado (ou não há chips), guarda vazio = "equipe inteira".
                 const equipe = (teamChips.length && activeChips.length < teamChips.length)
                     ? activeChips.map(chip => chip.dataset.name)
                     : [];
-                return { produto, quantidade, unidade, pedido, equipe };
-            }).filter(item => item.produto || item.quantidade || item.unidade || item.pedido);
+                return { produto, quantidade, unidade: '', pedido: '', equipe };
+            }).filter(item => item.produto || item.quantidade);
         }
 
         // Helper comum aos cards das etapas "Realizado" e "Produção": cabeçalho com
@@ -6573,6 +7481,7 @@
             renderClosingRealizadoCards(blocks);
             renderClosingProducaoCards(blocks);
             renderClosingCollaboratorCards(blocks);
+            renderClosingAvaliacaoCards(blocks);
         }
 
         function renderClosingRealizadoCards(blocks) {
@@ -6775,6 +7684,7 @@
                 <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;">
                     <h1 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:0.12em;line-height:1.2;">${escapeHtml(documentTitle)}</h1>
                     <h2 style="margin:0;font-size:13px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(local)} • Encerramento • Sem. ${weekNumber} • ${escapeHtml(dateShort)}</h2>
+                    ${getClosingHorariosLabel() ? `<p style="margin:8px 0 0;font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.06em;">🕒 Horário: ${escapeHtml(getClosingHorariosLabel())}</p>` : ''}
                 </div>
 
                 <!-- Cards de estatística -->
@@ -6842,10 +7752,16 @@
                 hideLoadingOverlay();
             }
 
-            // Envia "realizado" para o Google Sheets
+            // Envia "realizado" para o Google Sheets (junto com o horário do dia, igual
+            // pra todas as linhas — é o mesmo horário de equipe usado no cabeçalho da imagem)
+            const horariosDoDia = loadClosingHorarios();
             const updates = data.reportBlocks
                 .filter(b => b.rowNumber)
-                .map(b => ({ rowNumber: b.rowNumber, local: b.rowLocal, realizado: b.realizado, status: b.status, quantidade: JSON.stringify(b.producao) }));
+                .map(b => ({
+                    rowNumber: b.rowNumber, local: b.rowLocal, realizado: b.realizado, status: b.status, quantidade: JSON.stringify(b.producao),
+                    horaInicio: horariosDoDia.inicio || '', horaSaidaAlmoco: horariosDoDia.saidaAlmoco || '',
+                    horaVoltaAlmoco: horariosDoDia.voltaAlmoco || '', horaSaida: horariosDoDia.saida || ''
+                }));
 
             if (updates.length > 0) {
                 await sendRealizadoToSheets(updates);
@@ -6860,8 +7776,37 @@
                     data: data.dateShort,
                     semana: data.weekNumber,
                     local: getSelectedProgramacaoType(),
-                    registros: collaboratorControl
+                    registros: collaboratorControl,
+                    horaInicio: horariosDoDia.inicio || '', horaSaidaAlmoco: horariosDoDia.saidaAlmoco || '',
+                    horaVoltaAlmoco: horariosDoDia.voltaAlmoco || '', horaSaida: horariosDoDia.saida || ''
                 });
+            }
+
+            // Envia a avaliação individual (Assiduidade/Organização/Participação/
+            // Agilidade/Pontualidade) — de qualquer setor, não só SPG Packing.
+            const avaliacaoRegistros = collectClosingAvaliacao();
+            if (avaliacaoRegistros.length > 0) {
+                await sendAvaliacaoToSheets({
+                    data: data.dateShort,
+                    semana: data.weekNumber,
+                    local: getSelectedProgramacaoType(),
+                    registros: avaliacaoRegistros
+                });
+            }
+        }
+
+        async function sendAvaliacaoToSheets(payload) {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'saveAvaliacao', ...payload })
+                });
+                console.log('Avaliação enviada para a planilha.');
+            } catch (err) {
+                console.error('Erro ao enviar avaliação:', err);
             }
         }
 
