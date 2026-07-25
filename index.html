@@ -497,6 +497,10 @@
                         <p class="text-sm text-slate-500 mt-1">Planeje, acompanhe e conclua as atividades da equipe.</p>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-end shrink-0">
+                        <button type="button" id="btnGerarImagemProg" onclick="exportProgramacaoDashboardImage()" title="Gerar a imagem da programação dessa data/setor pra enviar, sem precisar abrir Nova Programação" class="btn-fechar-dia hidden items-center gap-2 px-3 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 rounded-xl text-sm font-bold transition-all active:scale-95">
+                            <i data-lucide="image-down" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Gerar Imagem</span>
+                        </button>
                         <button type="button" id="btnFecharDiaTop" onclick="openClosingDayModal()" class="btn-fechar-dia hidden items-center gap-2 px-3 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm shadow-green-600/20">
                             <i data-lucide="clipboard-check" class="w-4 h-4"></i>
                             <span class="hidden sm:inline">Fechar Dia</span>
@@ -2583,64 +2587,6 @@
             }
         }
 
-        // Dicionário de Autocorreção Inteligente para Operações
-        const spellCheckDict = {
-            "vasamento": "vazamento",
-            "vasamentos": "vazamentos",
-            "concerto": "conserto",
-            "concertar": "consertar",
-            "rossada": "roçada",
-            "rossar": "roçar",
-            "rossagem": "roçagem",
-            "rosada": "roçada",
-            "rosagem": "roçagem",
-            "rosar": "roçar",
-            "mecher": "mexer",
-            "puchar": "puxar",
-            "calsario": "calcário",
-            "calcario": "calcário",
-            "manuntenção": "manutenção",
-            "manutencao": "manutenção",
-            "pulverizaçao": "pulverização",
-            "pulverisacao": "pulverização",
-            "pulverizacao": "pulverização",
-            "adubacao": "adubação",
-            "aspersao": "aspersão",
-            "rocadeira": "roçadeira",
-            "brocolis": "brócolis",
-            "voce": "você",
-            "voces": "vocês",
-            "mecanico": "mecânico",
-            "mecanica": "mecânica",
-            "area": "área",
-            "areas": "áreas",
-            "operacao": "operação",
-            "operacoes": "operações",
-            "instalacao": "instalação",
-            "instalação": "instalação",
-            "estalação": "instalação",
-            "programaçao": "programação",
-            "programacao": "programação",
-            "progração": "programação",
-            "gradeaçao": "gradeação",
-            "gradeacao": "gradeação",
-            "chaci": "chassi",
-            "emgraxar": "engraxar",
-            "ingraxar": "engraxar",
-            "caxamba": "caçamba",
-            "cacamba": "caçamba",
-            "preção": "pressão",
-            "pressao": "pressão",
-            "pnel": "pneu",
-            "pnél": "pneu",
-            "mecânico preto": "",
-            "mecanico preto": "",
-            "preto mecânico": "",
-            "preto mecanico": "",
-            "preto": "",
-            "macaco": ""
-        };
-
         // Dicionário de Bloqueio Específico para Operadores (Evita termos pejorativos/racistas)
         const operatorSpellCheckDict = {
             "mecânico preto": "",
@@ -2650,195 +2596,6 @@
             "preto": "",
             "macaco": ""
         };
-
-        const portugueseSpellcheckDomainWords = [
-            'microaspersor',
-            'microaspersores',
-            'microaspersão',
-            'microaspersões',
-            'venturi',
-            'bagana',
-            'baganas',
-            'roçadeira',
-            'roçadeiras',
-            'brócolis',
-            'calcário',
-            'caçamba',
-            'caçambas',
-            'chassi',
-            'engraxar',
-            'pulverização',
-            'adubação',
-            'roçada',
-            'roçagem',
-            'pressão',
-            'manutenção',
-            'programação',
-            'operação',
-            'operações'
-        ];
-
-        let portugueseSpellChecker = null;
-        let portugueseSpellCheckerPromise = null;
-
-        async function loadPortugueseSpellChecker() {
-            if (portugueseSpellCheckerPromise) return portugueseSpellCheckerPromise;
-
-            // "dictionary-pt" é um pacote feito pra Node (lê os arquivos .aff/.dic do
-            // disco via fs), então importar ele direto como módulo ES no navegador
-            // quebra. Por isso buscamos os dois arquivos como texto puro e montamos o
-            // nspell manualmente — é a forma que o próprio nspell documenta pra browser.
-            portugueseSpellCheckerPromise = Promise.all([
-                import('https://cdn.jsdelivr.net/npm/nspell/+esm'),
-                fetch('https://cdn.jsdelivr.net/npm/dictionary-pt/index.aff').then(r => r.text()),
-                fetch('https://cdn.jsdelivr.net/npm/dictionary-pt/index.dic').then(r => r.text())
-            ]).then(([nspellModule, aff, dic]) => {
-                const nspell = nspellModule.default || nspellModule;
-                const spell = nspell({ aff, dic });
-                portugueseSpellcheckDomainWords.forEach(word => spell.add(word));
-                portugueseSpellChecker = spell;
-                return spell;
-            }).catch(err => {
-                console.warn('Não foi possível carregar o corretor de português:', err);
-                portugueseSpellChecker = null;
-                return null;
-            });
-
-            return portugueseSpellCheckerPromise;
-        }
-
-        const portugueseAccentMap = {
-            "voce": "você",
-            "voces": "vocês",
-            "mecanico": "mecânico",
-            "mecanica": "mecânica",
-            "mecanicos": "mecânicos",
-            "mecanicas": "mecânicas",
-            "area": "área",
-            "areas": "áreas",
-            "operacao": "operação",
-            "operacoes": "operações",
-            "instalacao": "instalação",
-            "instalacoes": "instalações",
-            "programacao": "programação",
-            "programacoes": "programações",
-            "manutencao": "manutenção",
-            "manutencoes": "manutenções",
-            "pulverizacao": "pulverização",
-            "pulverizacoes": "pulverizações",
-            "adubacao": "adubação",
-            "adubacoes": "adubações",
-            "aspersao": "aspersão",
-            "aspersoes": "aspersões",
-            "rocadeira": "roçadeira",
-            "rocadeiras": "roçadeiras",
-            "brocolis": "brócolis",
-            "nao": "não",
-            "ja": "já",
-            "tambem": "também",
-            "porem": "porém",
-            "ate": "até",
-            "alem": "além",
-            "estao": "estão",
-            "sao": "são",
-            "sera": "será",
-            "podera": "poderá",
-            "tera": "terá"
-        };
-
-        function preserveWordCase(source, target) {
-            if (!source) return target;
-            if (source === source.toUpperCase()) return target.toUpperCase();
-            if (source[0] === source[0].toUpperCase()) {
-                return target.charAt(0).toUpperCase() + target.slice(1);
-            }
-            return target;
-        }
-
-        function restorePortugueseAccents(text) {
-            return text.replace(/\b[A-Za-zÀ-ÿ]+\b/g, match => {
-                const lower = match.toLowerCase();
-                if (portugueseAccentMap[lower]) {
-                    return preserveWordCase(match, portugueseAccentMap[lower]);
-                }
-
-                if (lower.endsWith('acoes')) {
-                    return preserveWordCase(match, lower.slice(0, -5) + 'ações');
-                }
-                if (lower.endsWith('acao')) {
-                    return preserveWordCase(match, lower.slice(0, -4) + 'ação');
-                }
-                if (lower.endsWith('icoes')) {
-                    return preserveWordCase(match, lower.slice(0, -5) + 'ições');
-                }
-                if (lower.endsWith('icao')) {
-                    return preserveWordCase(match, lower.slice(0, -4) + 'ição');
-                }
-                if (lower.endsWith('oes')) {
-                    return preserveWordCase(match, lower.slice(0, -3) + 'ões');
-                }
-                if (lower.endsWith('ao') && lower.length > 3) {
-                    return preserveWordCase(match, lower.slice(0, -2) + 'ão');
-                }
-
-                return match;
-            });
-        }
-
-        function correctWithPortugueseSpellChecker(text) {
-            if (!portugueseSpellChecker) return text;
-
-            return text.replace(/\b[A-Za-zÀ-ÿ]+\b/g, match => {
-                const lower = match.toLowerCase();
-
-                if (match === match.toUpperCase() && match.length > 2) {
-                    return match;
-                }
-
-                if (portugueseSpellcheckDomainWords.includes(lower)) {
-                    return match;
-                }
-
-                if (portugueseSpellChecker.correct(lower)) {
-                    return match;
-                }
-
-                const suggestions = portugueseSpellChecker.suggest(lower);
-                if (!suggestions || !suggestions.length) {
-                    return match;
-                }
-
-                return preserveWordCase(match, suggestions[0]);
-            });
-        }
-
-        function autoCorrectText(textarea) {
-            let originalText = textarea.value;
-            let newText = restorePortugueseAccents(originalText);
-            
-            // Procura e substitui palavras erradas mantendo letras maiúsculas caso existam
-            Object.keys(spellCheckDict).forEach(wrong => {
-                const regex = new RegExp('\\b' + wrong + '\\b', 'gi');
-                newText = newText.replace(regex, match => {
-                    const right = spellCheckDict[wrong];
-                    if (right === "") return ""; // Se for para apagar o termo, retorna vazio
-                    if (match.charAt(0) === match.charAt(0).toUpperCase()) {
-                        return right.charAt(0).toUpperCase() + right.slice(1);
-                    }
-                    return right;
-                });
-            });
-
-            newText = correctWithPortugueseSpellChecker(newText);
-
-            // Atualiza o texto se houve correção e mantém a posição do cursor
-            if (originalText !== newText) {
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                textarea.value = newText;
-                textarea.setSelectionRange(start, end);
-            }
-        }
 
         // Função de bloqueio que se aplica apenas ao campo "Outro" do Operador
         function autoCorrectOperator(input) {
@@ -2941,7 +2698,6 @@
                 document.getElementById('localSelect').value = savedSector;
             }
 
-            loadPortugueseSpellChecker();
             lucide.createIcons();
             const today = new Date();
             currentWeekNumber = getISOWeekNumber(today);
@@ -3600,7 +3356,7 @@
                 saveToLocalStorage();
                 updatePreview();
                 showMessageModal(
-                    'Pendências trazidas',
+                    'Pendências localizadas',
                     `${result.tasks.length} serviço(s) de ${result.dayKey} que ainda não foram concluídos foram adicionados automaticamente aqui. Revise antes de enviar.`,
                     'info'
                 );
@@ -3962,7 +3718,7 @@
                                 ${options}
                             </select>`}
                         </div>
-                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="${isInsumos ? 'Observações adicionais (opcional)...' : 'Descreva as operações...'}" spellcheck="true" autocorrect="on" autocapitalize="sentences" lang="pt-BR" oninput="autoCorrectText(this); updatePreview()">${operacoesVal}</textarea>
+                        <textarea class="task-operacoes w-full p-3 border border-slate-200 rounded-xl text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-medium text-slate-700 shadow-sm resize-none" rows="2" placeholder="${isInsumos ? 'Observações adicionais (opcional)...' : 'Descreva as operações...'}" spellcheck="true" autocorrect="on" autocapitalize="sentences" lang="pt-BR" oninput="updatePreview()">${operacoesVal}</textarea>
                     </div>
                 </div>
             `;
@@ -5951,13 +5707,16 @@
             return { statsHtml, tableHtml };
         }
 
-        function renderProgramacaoDashboard() {
-            const local = getDashboardSelectedSector();
+        // Aplica os filtros da página Programação (equipe/status/busca) em cima de
+        // dashboardRows. Extraída de renderProgramacaoDashboard pra ser reaproveitada
+        // por "Gerar Imagem" — assim a imagem exportada bate com o que a pessoa está
+        // vendo na tela, e não com todos os serviços da data sem filtro nenhum.
+        function getFilteredDashboardRows() {
             const equipeFilter = document.getElementById('dashFilterEquipe').value;
             const statusFilter = document.getElementById('dashFilterStatus').value;
             const searchFilter = (document.getElementById('dashFilterSearch').value || '').trim().toLowerCase();
 
-            const filtered = dashboardRows.filter(row => {
+            return dashboardRows.filter(row => {
                 const names = normalizeSelectedCollaborators(row.operador);
                 if (equipeFilter && !names.includes(equipeFilter)) return false;
                 if (statusFilter && row.status !== statusFilter) return false;
@@ -5967,11 +5726,87 @@
                 }
                 return true;
             });
+        }
 
+        function renderProgramacaoDashboard() {
+            const local = getDashboardSelectedSector();
+            const filtered = getFilteredDashboardRows();
             const { statsHtml, tableHtml } = buildProgramacaoResultHtml(filtered, local, { editable: true });
             document.getElementById('dashStatCards').innerHTML = statsHtml;
             document.getElementById('dashTableContainer').innerHTML = tableHtml;
             lucide.createIcons();
+        }
+
+        // Gera a mesma imagem "bonita" (cards + tabela) que o Encerramento do Dia
+        // produz, mas direto do que já está salvo na planilha (dashboardRows) — pra
+        // reenviar/gerar a imagem de uma programação já lançada sem ter que abrir
+        // "Nova Programação" de novo (isso reenviaria os serviços pra planilha à toa).
+        async function exportProgramacaoDashboardImage() {
+            const rows = getFilteredDashboardRows();
+            if (!rows.length) {
+                showMessageModal('Aviso', 'Nenhum serviço para gerar imagem nessa data/filtro.', 'info');
+                return;
+            }
+
+            const local = getDashboardSelectedSector();
+            const dateVal = document.getElementById('dashFilterDate').value;
+            const weekNumber = rows.find(r => r.semana)?.semana || getEffectiveWeekNumber();
+
+            let dateDisplay = '--', dateShort = '--';
+            if (dateVal) {
+                const [y, m, d] = dateVal.split('-');
+                const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                const weekdayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+                const cap = weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1);
+                dateDisplay = `${cap}, ${d}/${m}/${y}`;
+                dateShort = `${d}/${m}/${y}`;
+            }
+
+            const statusCounts = {};
+            const reportBlocks = rows.map(row => {
+                statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+                return {
+                    collaborators: normalizeSelectedCollaborators(row.operador),
+                    local: row.blocos || '',
+                    operacoes: row.operacoes || '',
+                    status: row.status || 'Em Andamento',
+                    realizado: row.realizado || '',
+                    producao: parseProducao(row.quantidade)
+                };
+            });
+
+            // Horário do dia é guardado por data/setor (Encerramento do Dia usa o campo
+            // "packingDate" pra isso, que pode estar numa data diferente da selecionada
+            // aqui no filtro da Programação) — busca pela data certa em vez de confiar
+            // no campo do formulário de Nova Programação.
+            let horarios = {};
+            try {
+                horarios = JSON.parse(localStorage.getItem(`spg_closingHorarios_${local}_${dateVal}`) || '{}');
+            } catch (e) { horarios = {}; }
+            const horariosLabel = [horarios.inicio, horarios.saidaAlmoco, horarios.voltaAlmoco, horarios.saida].filter(Boolean).join(' → ');
+
+            showLoadingOverlay('Gerando imagem da programação, aguarde...');
+            const stage = document.createElement('div');
+            stage.style.cssText = 'position:absolute;left:-10000px;top:0;pointer-events:none;overflow:visible;';
+            stage.innerHTML = buildClosingExportHtml({ dateDisplay, dateShort, weekNumber, reportBlocks, statusCounts, horariosLabel });
+            document.body.appendChild(stage);
+
+            const filename = `${getProgramacaoFilePrefix(local)}_Programacao_${(dateVal || 'dia').replace(/-/g, '')}.png`;
+            try {
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const stageRect = stage.firstElementChild.getBoundingClientRect();
+                const safeRatio = getSafeExportPixelRatio(stageRect.width, stageRect.height, 3);
+                const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: safeRatio, backgroundColor: '#f0f2f5', cacheBust: true });
+                const blob = await (await fetch(dataUrl)).blob();
+                const file = new File([blob], filename, { type: 'image/png' });
+                openShareImageModal({ file, blob, filename, shareText: `Programação - Semana ${weekNumber}` });
+            } catch (err) {
+                console.error(err);
+                showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
+            } finally {
+                document.body.removeChild(stage);
+                hideLoadingOverlay();
+            }
         }
 
         // ==========================================
@@ -6907,8 +6742,10 @@
         // ENCERRAMENTO DO DIA - SPG PACKING
         // ==========================================
 
-        // Só faz sentido fechar o dia se a data/setor selecionados no filtro da
-        // Programação já tiverem algum serviço enviado — senão não há o que encerrar.
+        // Só faz sentido fechar o dia (ou gerar a imagem da programação) se a data/setor
+        // selecionados no filtro da Programação já tiverem algum serviço enviado —
+        // senão não há o que encerrar/exportar. ".btn-fechar-dia" também é usada pelo
+        // botão "Gerar Imagem" (mesma condição de exibição, ação diferente).
         function updateBtnFecharDia() {
             const hasServicos = dashboardRows.length > 0;
             document.querySelectorAll('.btn-fechar-dia').forEach(btn => {
@@ -7129,38 +6966,53 @@
             lucide.createIcons();
         }
 
+        // Acha o dia (segunda..domingo) do formulário semanal que corresponde à "Data
+        // da Programação" selecionada. O Encerramento do Dia fecha um único dia por
+        // vez — se o formulário tiver mais de um dia marcado ao mesmo tempo (comum,
+        // já que a semana inteira pode ser programada de uma vez), sem esse filtro o
+        // Encerramento juntava os blocos de TODOS os dias marcados, duplicando a
+        // programação no relatório sempre que outro dia da semana também estivesse
+        // marcado (ex: dia de ontem ainda marcado no rascunho).
+        function closingDayIdForPackingDate() {
+            const dateVal = document.getElementById('packingDate')?.value;
+            if (!dateVal) return null;
+            const [y, m, d] = dateVal.split('-').map(Number);
+            const date = new Date(y, m - 1, d);
+            const index = (date.getDay() + 6) % 7; // 0=Segunda ... 6=Domingo, mesma ordem de daysOfWeek
+            const day = daysOfWeek[index];
+            return day ? day.toLowerCase().split('-')[0] : null;
+        }
+
         function collectClosingBlocks() {
             const type = getSelectedProgramacaoType();
             const isColaboradores = isColaboradoresProgramacao(type);
             const responsavelLabel = getResponsavelPreviewLabel(type);
             const blocks = [];
-            daysOfWeek.forEach(day => {
-                const dayId = day.toLowerCase().split('-')[0];
-                const checkEl = document.getElementById(`check_${dayId}`);
-                if (checkEl && checkEl.checked) {
-                    document.querySelectorAll(`#tasks_container_${dayId} .task-block`).forEach(block => {
-                        const responsaveis = isColaboradores
-                            ? getSelectedCollaborators(block)
-                            : [block.querySelector('.task-operador-custom:not(.hidden)')?.value.trim()
-                                || block.querySelector('.task-operador')?.value]
-                                .filter(Boolean).filter(v => v !== 'Outro');
-                        const processaCaixasEl = block.querySelector('.task-processa-caixas');
-                        blocks.push({
-                            blockEl: block,
-                            collaborators: responsaveis,
-                            responsavelLabel,
-                            local: block.querySelector('.task-blocos')?.value.trim() || '',
-                            operacoes: block.querySelector('.task-operacoes')?.value.trim() || '',
-                            status: block.querySelector('.task-status')?.value || 'Em Andamento',
-                            rowNumber: block.dataset.rowNumber ? parseInt(block.dataset.rowNumber) : null,
-                            rowLocal: block.dataset.rowLocal || type,
-                            realizado: block.dataset.realizado || '',
-                            producao: parseProducao(block.dataset.producao),
-                            processaCaixas: processaCaixasEl ? processaCaixasEl.checked : true
-                        });
+            const closingDayId = closingDayIdForPackingDate();
+            const checkEl = closingDayId ? document.getElementById(`check_${closingDayId}`) : null;
+            if (checkEl && checkEl.checked) {
+                document.querySelectorAll(`#tasks_container_${closingDayId} .task-block`).forEach(block => {
+                    const responsaveis = isColaboradores
+                        ? getSelectedCollaborators(block)
+                        : [block.querySelector('.task-operador-custom:not(.hidden)')?.value.trim()
+                            || block.querySelector('.task-operador')?.value]
+                            .filter(Boolean).filter(v => v !== 'Outro');
+                    const processaCaixasEl = block.querySelector('.task-processa-caixas');
+                    blocks.push({
+                        blockEl: block,
+                        collaborators: responsaveis,
+                        responsavelLabel,
+                        local: block.querySelector('.task-blocos')?.value.trim() || '',
+                        operacoes: block.querySelector('.task-operacoes')?.value.trim() || '',
+                        status: block.querySelector('.task-status')?.value || 'Em Andamento',
+                        rowNumber: block.dataset.rowNumber ? parseInt(block.dataset.rowNumber) : null,
+                        rowLocal: block.dataset.rowLocal || type,
+                        realizado: block.dataset.realizado || '',
+                        producao: parseProducao(block.dataset.producao),
+                        processaCaixas: processaCaixasEl ? processaCaixasEl.checked : true
                     });
-                }
-            });
+                });
+            }
 
             // Completa com o que já está salvo na planilha (carregado na página
             // Programação) mas não está no rascunho local — acontece quando o rascunho
@@ -7613,7 +7465,7 @@
             return '🔧';
         }
 
-        function buildClosingExportHtml({ dateDisplay, dateShort, weekNumber, reportBlocks, statusCounts }) {
+        function buildClosingExportHtml({ dateDisplay, dateShort, weekNumber, reportBlocks, statusCounts, horariosLabel }) {
             const local = getSelectedProgramacaoType();
             const responsavelLabel = reportBlocks[0]?.responsavelLabel || getResponsavelPreviewLabel(local);
             const documentTitle = getProgramacaoDocumentTitle(local);
@@ -7684,7 +7536,7 @@
                 <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;">
                     <h1 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:0.12em;line-height:1.2;">${escapeHtml(documentTitle)}</h1>
                     <h2 style="margin:0;font-size:13px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(local)} • Encerramento • Sem. ${weekNumber} • ${escapeHtml(dateShort)}</h2>
-                    ${getClosingHorariosLabel() ? `<p style="margin:8px 0 0;font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.06em;">🕒 Horário: ${escapeHtml(getClosingHorariosLabel())}</p>` : ''}
+                    ${(horariosLabel !== undefined ? horariosLabel : getClosingHorariosLabel()) ? `<p style="margin:8px 0 0;font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.06em;">🕒 Horário: ${escapeHtml(horariosLabel !== undefined ? horariosLabel : getClosingHorariosLabel())}</p>` : ''}
                 </div>
 
                 <!-- Cards de estatística -->
