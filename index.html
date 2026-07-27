@@ -571,6 +571,21 @@
                                         </div>
                                     </div>
 
+                                    <!-- MODO: UM DIA POR VEZ x SEMANA INTEIRA -->
+                                    <div class="mt-5">
+                                        <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Como você quer programar?</label>
+                                        <div id="novaProgWeekModeToggle" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button type="button" onclick="setNovaProgWeekMode('single')" data-mode="single" class="nova-prog-mode-btn flex flex-col items-start gap-1 p-4 rounded-2xl border-2 text-left transition-all border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/40">
+                                                <span class="flex items-center gap-2 text-sm font-black text-slate-700"><i data-lucide="calendar-days" class="w-4 h-4 text-brand-500"></i> Um dia por vez</span>
+                                                <span class="text-[11px] font-semibold text-slate-400 leading-snug">Escolhe um dia, preenche e envia — repete pro próximo</span>
+                                            </button>
+                                            <button type="button" onclick="setNovaProgWeekMode('week')" data-mode="week" class="nova-prog-mode-btn flex flex-col items-start gap-1 p-4 rounded-2xl border-2 text-left transition-all border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/40">
+                                                <span class="flex items-center gap-2 text-sm font-black text-slate-700"><i data-lucide="calendar-range" class="w-4 h-4 text-brand-500"></i> Semana inteira</span>
+                                                <span class="text-[11px] font-semibold text-slate-400 leading-snug">Preenche vários dias de uma vez e envia tudo junto</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <!-- DATA DA PROGRAMAÇÃO (usada no Encerramento do Dia, todos os tipos) -->
                                     <div id="packingDateContainer" class="hidden mt-5">
                                         <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Data da Programação</label>
@@ -590,14 +605,15 @@
                                 <div id="novaProgDayPickerGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
                             </div>
 
-                            <!-- ETAPA 3: SERVIÇOS DO DIA ESCOLHIDO -->
+                            <!-- ETAPA 3: SERVIÇOS DO DIA ESCOLHIDO (ou dos dias, no modo Semana inteira) -->
                             <div id="novaProgStepServicos" class="hidden">
-                                <h3 class="text-[13px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2.5">
+                                <h3 class="text-[13px] font-black text-slate-800 uppercase tracking-widest mb-1.5 flex items-center gap-2.5">
                                     <span class="p-1.5 bg-brand-50 rounded-lg text-brand-500 flex items-center justify-center">
                                         <i data-lucide="list-checks" class="w-4 h-4"></i>
                                     </span>
-                                    Serviços do dia
+                                    <span id="novaProgServicosStepTitle">Serviços do dia</span>
                                 </h3>
+                                <p id="novaProgServicosStepHint" class="hidden text-[12px] text-slate-400 font-medium mb-4">Toque em cada dia abaixo pra ativar e preencher os serviços. Pode marcar quantos dias quiser.</p>
                                 <div id="daysContainer" class="space-y-3.5">
                                     <!-- Dias gerados via JS -->
                                 </div>
@@ -741,7 +757,7 @@
             <div id="view-produtividade" class="dash-view hidden p-4 sm:p-6 lg:p-8">
                 <div class="mb-6">
                     <h1 class="text-2xl sm:text-3xl font-black text-slate-800">Produtividade</h1>
-                    <p class="text-sm text-slate-500 mt-1">Caixas processadas por colaborador e por equipe, a partir do Encerramento do Dia do SPG Packing.</p>
+                    <p class="text-sm text-slate-500 mt-1">Produção e avaliações de desempenho registradas no Encerramento do Dia.</p>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-5 flex flex-col sm:flex-row flex-wrap gap-3">
@@ -760,6 +776,8 @@
                 </div>
 
                 <div id="prodStatCards" class="mb-5"></div>
+
+                <div id="prodAvaliacaoContainer" class="mb-6"></div>
 
                 <div id="prodTrendChartContainer" class="mb-6"></div>
 
@@ -1180,6 +1198,8 @@
             </div>
 
             <div id="prodProfileWeekday"></div>
+
+            <div id="prodProfileAvaliacao"></div>
 
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mt-4">
                 <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
@@ -1789,7 +1809,7 @@
         async function loadInsumosSuggestionsFromHistory() {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(`${SCRIPT_URL}?local=Insumos`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?local=Insumos`, { redirect: 'follow' });
                 const data = await response.json();
                 if (data.status !== 'sucesso' || !Array.isArray(data.rows)) return;
 
@@ -2098,6 +2118,7 @@
         const TEAM_DEFAULT_TYPE = 'Colaboradores';
         const TEAM_TYPES = ['Colaboradores', 'SPG Packing', 'SPG Estufa', 'Insumos'];
         let teams = [];
+        let _loadTeamsPromise = null;
         let editingTeamIndex = null;
         let teamsListFilter = 'Todas';
 
@@ -2114,7 +2135,7 @@
         async function loadTeamsFromSheet() {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(`${SCRIPT_URL}?local=Equipes`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?local=Equipes`, { redirect: 'follow' });
                 const data = await response.json();
                 if (data.status !== 'sucesso' || !Array.isArray(data.rows)) return false;
 
@@ -2139,7 +2160,12 @@
 
         async function loadTeams() {
             loadTeamsFromCache();
-            await loadTeamsFromSheet();
+            if (!_loadTeamsPromise) {
+                _loadTeamsPromise = loadTeamsFromSheet().finally(() => {
+                    _loadTeamsPromise = null;
+                });
+            }
+            await _loadTeamsPromise;
         }
 
         function persistTeams() {
@@ -2512,7 +2538,7 @@
             if (team.rowNumber) {
                 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
                 try {
-                    const response = await fetch(SCRIPT_URL, {
+                    const response = await fetchWithTimeout(SCRIPT_URL, {
                         method: 'POST',
                         redirect: 'follow',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2740,6 +2766,7 @@
         const SERVICOS_STORAGE_KEY = 'spg_customServicos_cache';
         const SERVICO_SECTOR_TYPES = ['Trator', 'Colaboradores', 'SPG Packing', 'SPG Estufa'];
         let customServicos = [];
+        let _loadServicosPromise = null;
 
         function loadServicosFromCache() {
             try {
@@ -2754,7 +2781,7 @@
         async function loadServicosFromSheet() {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(`${SCRIPT_URL}?local=Servicos`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?local=Servicos`, { redirect: 'follow' });
                 const data = await response.json();
                 if (data.status !== 'sucesso' || !Array.isArray(data.rows)) return false;
 
@@ -2773,7 +2800,12 @@
 
         async function loadServicos() {
             loadServicosFromCache();
-            await loadServicosFromSheet();
+            if (!_loadServicosPromise) {
+                _loadServicosPromise = loadServicosFromSheet().finally(() => {
+                    _loadServicosPromise = null;
+                });
+            }
+            await _loadServicosPromise;
         }
 
         function persistServicos() {
@@ -2833,7 +2865,7 @@
             if (!servico.rowNumber) return;
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3278,7 +3310,7 @@
             start.setDate(end.getDate() - 30);
             const toParam = d => d.toISOString().split('T')[0];
             const params = new URLSearchParams({ startDate: toParam(start), endDate: toParam(end), local });
-            const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+            const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
             const data = await response.json();
             if (data.status !== 'sucesso' || !Array.isArray(data.rows) || !data.rows.length) return null;
 
@@ -4304,10 +4336,26 @@
             return { stage, clone };
         }
 
-        // Nenhum dos fetch() para o Google Apps Script tem timeout nativo: em rede
-        // instável (rural) a promise pode nunca se resolver nem rejeitar, travando o
-        // overlay de "Salvando..." pra sempre. withTimeout força uma rejeição depois
-        // de "ms" e o catch de quem chamou trata isso como falha normal.
+        const NETWORK_TIMEOUT_MS = 15000;
+
+        // fetch() não possui timeout nativo. AbortController também encerra a conexão
+        // pendurada, em vez de apenas deixar de esperar por ela.
+        async function fetchWithTimeout(url, options = {}, ms = NETWORK_TIMEOUT_MS) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), ms);
+            try {
+                return await fetch(url, { ...options, signal: controller.signal });
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    throw new Error('Tempo esgotado ao conectar com o servidor.');
+                }
+                throw err;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        // Limite adicional para operações que não são fetch, como gerar imagens.
         function withTimeout(promise, ms, label) {
             return Promise.race([
                 promise,
@@ -4469,7 +4517,7 @@
             _estimativaTimers.set(block, setTimeout(async () => {
                 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
                 try {
-                    await fetch(SCRIPT_URL, {
+                    await fetchWithTimeout(SCRIPT_URL, {
                         method: 'POST',
                         mode: 'no-cors',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4489,7 +4537,7 @@
         async function sendDataToGoogleSheets(payload, blocks) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(SCRIPT_URL, {
+                const response = await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4515,7 +4563,7 @@
         async function sendTeamUpdateToGoogleSheets(team) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(SCRIPT_URL, {
+                const response = await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4548,7 +4596,7 @@
             try {
                 // "no-cors" foi removido: com ele a resposta fica opaca e o app nunca
                 // consegue saber se a atualização realmente funcionou (ver bug de duplicação).
-                const response = await fetch(SCRIPT_URL, {
+                const response = await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -4619,18 +4667,26 @@
             modal.classList.add('hidden');
         }
 
+        let _loadingOverlayVisible = false;
+
         function showLoadingOverlay(text) {
             const overlay = document.getElementById('loadingOverlay');
             const textEl = document.getElementById('loadingOverlayText');
             if (textEl) textEl.innerText = text || 'Aguarde...';
             if (overlay) overlay.classList.remove('hidden');
-            lockBodyScroll();
+            if (!_loadingOverlayVisible) {
+                _loadingOverlayVisible = true;
+                lockBodyScroll();
+            }
         }
 
         function hideLoadingOverlay() {
             const overlay = document.getElementById('loadingOverlay');
             if (overlay) overlay.classList.add('hidden');
-            unlockBodyScroll();
+            if (_loadingOverlayVisible) {
+                _loadingOverlayVisible = false;
+                unlockBodyScroll();
+            }
         }
 
         // ==========================================
@@ -4818,7 +4874,7 @@
             if (view === 'visaogeral') loadVisaoGeralSummary();
             if (view === 'equipes') { renderEquipesPage(); loadTeams(); }
             if (view === 'produtividade') initProdutividadePage();
-            if (view === 'servicos') { renderServicosPage(); loadServicosFromSheet(); }
+            if (view === 'servicos') { renderServicosPage(); loadServicos(); }
             if (view === 'relatorios') loadRelatorioData();
             if (view === 'historico') initHistoricoPage();
             lucide.createIcons();
@@ -4848,7 +4904,7 @@
             await Promise.all(Object.keys(programacaoConfig).map(async (sector) => {
                 try {
                     const params = new URLSearchParams({ startDate: todayStr, endDate: todayStr, local: sector });
-                    const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                    const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                     const data = await response.json();
                     visaoGeralDataBySector[sector] = (data.status === 'sucesso' && data.rows) ? data.rows : [];
                 } catch (err) {
@@ -5037,7 +5093,7 @@
             let rows = cached || [];
             try {
                 const params = new URLSearchParams({ startDate, endDate, local: sector });
-                const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
                 rows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
                 setReportCache(cacheKey, rows);
@@ -5098,7 +5154,7 @@
                 freshData[sector] = {};
                 try {
                     const params = new URLSearchParams({ startDate, endDate, local: sector });
-                    const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                    const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                     const data = await response.json();
                     const rows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
                     rows.forEach(row => {
@@ -5243,16 +5299,68 @@
         }
 
         // ==========================================
-        // NOVA PROGRAMAÇÃO — assistente por etapas (popup): Setor/Semana > Dia >
-        // Serviços > Revisão e Envio. Um dia por sessão do popup; pra outro dia, reabre
-        // "Nova Programação". O botão "Gerar e Enviar" só existe dentro da etapa de
-        // Revisão (chama confirmBeforeSend/executeSend sem nenhuma mudança de lógica).
+        // NOVA PROGRAMAÇÃO — assistente por etapas (popup). Dois modos, escolhidos na
+        // etapa "config" (novaProgWeekMode, persistido em localStorage):
+        //  - 'single' (padrão): Setor/Semana > Dia > Serviços > Revisão e Envio — um dia
+        //    por sessão do popup; pra outro dia, reabre "Nova Programação".
+        //  - 'week': Setor/Semana > Serviços > Revisão e Envio — pula a etapa "Dia" e
+        //    mostra todos os cards de dia (accordion) na etapa Serviços, deixando ativar
+        //    e preencher quantos dias quiser antes de enviar tudo junto. Os dados
+        //    (collectLiveDraftRows/updatePreview/executeSend) já percorrem todo
+        //    `daysOfWeek` olhando o checkbox de cada dia, então não precisaram mudar —
+        //    só a navegação do wizard e o que fica visível em cada etapa.
+        // O botão "Gerar e Enviar" só existe dentro da etapa de Revisão (chama
+        // confirmBeforeSend/executeSend sem nenhuma mudança de lógica).
         // ==========================================
 
-        const novaProgWizardSteps = ['config', 'dia', 'servicos', 'revisao'];
+        let novaProgWeekMode = localStorage.getItem('spg_novaProgWeekMode') === 'week' ? 'week' : 'single';
+        let novaProgWizardSteps = ['config', 'dia', 'servicos', 'revisao'];
         let novaProgWizardStepIndex = 0;
         let _novaProgSelectedDayId = null;
         let _novaProgMultiDayWarned = false;
+
+        function updateNovaProgWizardStepsForMode() {
+            novaProgWizardSteps = novaProgWeekMode === 'week'
+                ? ['config', 'servicos', 'revisao']
+                : ['config', 'dia', 'servicos', 'revisao'];
+        }
+
+        function setNovaProgWeekMode(mode) {
+            novaProgWeekMode = mode === 'week' ? 'week' : 'single';
+            localStorage.setItem('spg_novaProgWeekMode', novaProgWeekMode);
+            updateNovaProgWizardStepsForMode();
+            renderNovaProgWeekModeToggle();
+        }
+
+        function renderNovaProgWeekModeToggle() {
+            const toggle = document.getElementById('novaProgWeekModeToggle');
+            if (!toggle) return;
+            toggle.querySelectorAll('.nova-prog-mode-btn').forEach(btn => {
+                const active = btn.dataset.mode === novaProgWeekMode;
+                btn.classList.toggle('border-brand-500', active);
+                btn.classList.toggle('bg-brand-50', active);
+                btn.classList.toggle('shadow-md', active);
+                btn.classList.toggle('border-slate-200', !active);
+            });
+            const title = document.getElementById('novaProgServicosStepTitle');
+            const hint = document.getElementById('novaProgServicosStepHint');
+            if (title) title.textContent = novaProgWeekMode === 'week' ? 'Serviços da semana' : 'Serviços do dia';
+            if (hint) hint.classList.toggle('hidden', novaProgWeekMode !== 'week');
+        }
+
+        // Mostra os cards de dia certos pra etapa "Serviços": no modo 'single', só o dia
+        // escolhido na etapa "Dia"; no modo 'week', todos os 7 cards ficam visíveis
+        // (accordion), cada um com seu próprio checkbox pra ativar/preencher.
+        function showActiveDayCards() {
+            if (novaProgWeekMode === 'week') {
+                daysOfWeek.forEach(day => {
+                    const dayId = day.toLowerCase().split('-')[0];
+                    document.getElementById(`card_${dayId}`)?.classList.remove('hidden');
+                });
+            } else {
+                showOnlySelectedDayCard(_novaProgSelectedDayId);
+            }
+        }
 
         const NOVA_PROG_STEP_CONTAINERS = {
             config: 'novaProgStepConfig',
@@ -5271,6 +5379,8 @@
             const modal = document.getElementById('novaProgramacaoModal');
             if (modal.classList.contains('hidden')) lockBodyScroll();
             modal.classList.remove('hidden');
+            updateNovaProgWizardStepsForMode();
+            renderNovaProgWeekModeToggle();
             const startIndex = novaProgWizardSteps.indexOf(options.startStep || 'config');
             novaProgWizardStepIndex = startIndex >= 0 ? startIndex : 0;
             updateNovaProgWizardStep();
@@ -5291,8 +5401,9 @@
             Object.values(NOVA_PROG_STEP_CONTAINERS).forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById(NOVA_PROG_STEP_CONTAINERS[stepKey]).classList.remove('hidden');
 
+            const stepTitle = (stepKey === 'servicos' && novaProgWeekMode === 'week') ? 'Serviços da Semana' : NOVA_PROG_STEP_TITLES[stepKey];
             const indicator = document.getElementById('novaProgWizardIndicator');
-            indicator.textContent = `Etapa ${novaProgWizardStepIndex + 1} de ${novaProgWizardSteps.length} — ${NOVA_PROG_STEP_TITLES[stepKey]}`;
+            indicator.textContent = `Etapa ${novaProgWizardStepIndex + 1} de ${novaProgWizardSteps.length} — ${stepTitle}`;
 
             const isFirst = novaProgWizardStepIndex === 0;
             const isLast = novaProgWizardStepIndex === novaProgWizardSteps.length - 1;
@@ -5311,6 +5422,7 @@
             }
 
             if (stepKey === 'dia') renderNovaProgDayPicker();
+            if (stepKey === 'servicos') showActiveDayCards();
             if (stepKey === 'revisao') renderLiveDraftPreview();
             lucide.createIcons();
         }
@@ -5322,23 +5434,48 @@
                 showMessageModal('Escolha um dia', 'Selecione um dia da semana pra continuar.', 'info');
                 return;
             }
-            // Trava de segurança: mesmo que algo chame novaProgWizardNext() direto
-            // (sem passar pelo await de selectProgramacaoDay), não deixa avançar
-            // enquanto a checagem de pendências do dia anterior ainda está rodando —
-            // senão o placeholder de "Verificando..." conta como bloco preenchido e a
-            // pessoa segue pra próxima etapa sem nenhum serviço de verdade no dia.
-            if ((stepKey === 'dia' || stepKey === 'servicos') && _novaProgSelectedDayId) {
-                const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
-                if (tasksContainer && tasksContainer.querySelector('.carryover-loading')) {
-                    showMessageModal('Aguarde um instante', 'Ainda estamos verificando se há serviços pendentes do dia anterior pra trazer pra esse dia.', 'info');
+
+            if (stepKey === 'servicos' && novaProgWeekMode === 'week') {
+                // Modo "Semana inteira": em vez de um único dia selecionado, valida
+                // todos os dias que a pessoa ativou (checkbox marcado) na etapa Serviços.
+                const checkedDayIds = daysOfWeek
+                    .map(day => day.toLowerCase().split('-')[0])
+                    .filter(dayId => document.getElementById(`check_${dayId}`)?.checked);
+                if (checkedDayIds.length === 0) {
+                    showMessageModal('Ative ao menos um dia', 'Ative pelo menos um dia da semana pra continuar.', 'info');
                     return;
                 }
-            }
-            if (stepKey === 'servicos') {
-                const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
-                if (!tasksContainer || tasksContainer.querySelectorAll('.task-block').length === 0) {
-                    showMessageModal('Adicione um serviço', 'Adicione pelo menos um bloco de serviço pra continuar.', 'info');
+                const stillLoading = checkedDayIds.some(dayId =>
+                    document.getElementById(`tasks_container_${dayId}`)?.querySelector('.carryover-loading'));
+                if (stillLoading) {
+                    showMessageModal('Aguarde um instante', 'Ainda estamos verificando se há serviços pendentes do dia anterior pra trazer pra algum dos dias ativados.', 'info');
                     return;
+                }
+                const emptyDayId = checkedDayIds.find(dayId =>
+                    document.querySelectorAll(`#tasks_container_${dayId} .task-block`).length === 0);
+                if (emptyDayId) {
+                    showMessageModal('Adicione um serviço', 'Cada dia ativado precisa de pelo menos um bloco de serviço. Adicione um serviço ou desative o dia.', 'info');
+                    return;
+                }
+            } else {
+                // Trava de segurança: mesmo que algo chame novaProgWizardNext() direto
+                // (sem passar pelo await de selectProgramacaoDay), não deixa avançar
+                // enquanto a checagem de pendências do dia anterior ainda está rodando —
+                // senão o placeholder de "Verificando..." conta como bloco preenchido e a
+                // pessoa segue pra próxima etapa sem nenhum serviço de verdade no dia.
+                if ((stepKey === 'dia' || stepKey === 'servicos') && _novaProgSelectedDayId) {
+                    const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
+                    if (tasksContainer && tasksContainer.querySelector('.carryover-loading')) {
+                        showMessageModal('Aguarde um instante', 'Ainda estamos verificando se há serviços pendentes do dia anterior pra trazer pra esse dia.', 'info');
+                        return;
+                    }
+                }
+                if (stepKey === 'servicos') {
+                    const tasksContainer = document.getElementById(`tasks_container_${_novaProgSelectedDayId}`);
+                    if (!tasksContainer || tasksContainer.querySelectorAll('.task-block').length === 0) {
+                        showMessageModal('Adicione um serviço', 'Adicione pelo menos um bloco de serviço pra continuar.', 'info');
+                        return;
+                    }
                 }
             }
 
@@ -5478,6 +5615,10 @@
             showOnlySelectedDayCard(dayId);
             novaProgWizardStepIndex = novaProgWizardSteps.indexOf('servicos');
             updateNovaProgWizardStep();
+            // updateNovaProgWizardStep() chama showActiveDayCards(), que no modo "Semana
+            // inteira" mostraria todos os 7 cards — força mostrar só o dia carregado do
+            // Histórico de novo, mesmo com o modo semana ativo.
+            showOnlySelectedDayCard(dayId);
         }
 
         // ==========================================
@@ -5512,6 +5653,7 @@
         // ==========================================
 
         let dashboardRows = [];
+        let _dashboardLoadId = 0;
 
         function todayDateInputValue() {
             const today = new Date();
@@ -5538,6 +5680,7 @@
         }
 
         async function loadProgramacaoDashboard(date) {
+            const loadId = ++_dashboardLoadId;
             const dateInput = document.getElementById('dashFilterDate');
             if (!dateInput) return;
             if (date) {
@@ -5564,11 +5707,13 @@
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
                 const params = new URLSearchParams({ startDate: selectedDate, endDate: selectedDate, local });
-                const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
+                if (loadId !== _dashboardLoadId) return;
                 dashboardRows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
                 setReportCache(cacheKey, dashboardRows);
             } catch (err) {
+                if (loadId !== _dashboardLoadId) return;
                 console.error('Erro ao buscar programação do dia:', err);
                 if (!cached) dashboardRows = [];
             }
@@ -5815,8 +5960,10 @@
         // ==========================================
 
         let produtividadeRows = [];
+        let produtividadeAvaliacaoRows = [];
         let produtividadeMode = 'colaborador';
         let _produtividadeColaboradoresCache = [];
+        let _produtividadeLoadId = 0;
 
         // Jornada simulada pra calcular produtividade por hora (caixas/h), já que dias
         // trabalhados sozinho não é uma comparação justa entre quem tem mais ou menos
@@ -5836,30 +5983,49 @@
         }
 
         async function loadProdutividadeStats() {
+            const loadId = ++_produtividadeLoadId;
             const startInput = document.getElementById('prodFilterStart');
             const endInput = document.getElementById('prodFilterEnd');
             if (!startInput || !endInput) return;
 
-            const cacheKey = `produtividade_${startInput.value}_${endInput.value}`;
+            const cacheKey = `produtividade_v2_${startInput.value}_${endInput.value}`;
             const cached = getReportCache(cacheKey);
             if (cached) {
-                produtividadeRows = cached;
+                produtividadeRows = cached.controle || [];
+                produtividadeAvaliacaoRows = cached.avaliacoes || [];
                 renderProdutividadeStats();
             } else {
                 document.getElementById('prodStatCards').innerHTML = '';
+                document.getElementById('prodAvaliacaoContainer').innerHTML = '';
                 document.getElementById('prodTableContainer').innerHTML = `<div class="text-center text-slate-400 text-sm italic py-14 bg-white rounded-2xl border border-slate-200 shadow-sm">Carregando estatísticas...</div>`;
             }
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const params = new URLSearchParams({ startDate: startInput.value, endDate: endInput.value, local: 'Controle Colaboradores' });
-                const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
-                const data = await response.json();
-                produtividadeRows = (data.status === 'sucesso' && data.rows) ? data.rows : [];
-                setReportCache(cacheKey, produtividadeRows);
+                const baseParams = { startDate: startInput.value, endDate: endInput.value };
+                const [controleResult, avaliacaoResult] = await Promise.allSettled([
+                    fetchWithTimeout(`${SCRIPT_URL}?${new URLSearchParams({ ...baseParams, local: 'Controle Colaboradores' })}`, { redirect: 'follow' }).then(response => response.json()),
+                    fetchWithTimeout(`${SCRIPT_URL}?${new URLSearchParams({ ...baseParams, local: 'Avaliacao' })}`, { redirect: 'follow' }).then(response => response.json())
+                ]);
+                if (loadId !== _produtividadeLoadId) return;
+                const controleData = controleResult.status === 'fulfilled' ? controleResult.value : null;
+                const avaliacaoData = avaliacaoResult.status === 'fulfilled' ? avaliacaoResult.value : null;
+                produtividadeRows = (controleData && controleData.status === 'sucesso' && controleData.rows)
+                    ? controleData.rows
+                    : (cached ? cached.controle || [] : []);
+                produtividadeAvaliacaoRows = (avaliacaoData && avaliacaoData.status === 'sucesso' && avaliacaoData.rows)
+                    ? avaliacaoData.rows.filter(row => row && row.colaborador && PROD_AVALIACAO_CRITERIOS.some(c => avaliacaoNota(row[c.key]) !== null))
+                    : (cached ? cached.avaliacoes || [] : []);
+                if (controleResult.status === 'rejected') console.error('Erro ao buscar controle de colaboradores:', controleResult.reason);
+                if (avaliacaoResult.status === 'rejected') console.error('Erro ao buscar avaliações:', avaliacaoResult.reason);
+                setReportCache(cacheKey, { controle: produtividadeRows, avaliacoes: produtividadeAvaliacaoRows });
             } catch (err) {
-                console.error('Erro ao buscar controle de colaboradores:', err);
-                if (!cached) produtividadeRows = [];
+                if (loadId !== _produtividadeLoadId) return;
+                console.error('Erro ao buscar dados de produtividade:', err);
+                if (!cached) {
+                    produtividadeRows = [];
+                    produtividadeAvaliacaoRows = [];
+                }
             }
             renderProdutividadeStats();
         }
@@ -5926,6 +6092,8 @@
             ];
             document.getElementById('prodStatCards').innerHTML = renderStatCardsLive(statCards);
 
+            renderProdutividadeAvaliacoes(search);
+
             renderProdutividadeTrendChart(produtividadeRows, search);
 
             document.getElementById('prodDestaquesContainer').innerHTML = renderProdutividadeDestaques(colaboradoresRanked, equipesRanked);
@@ -5939,6 +6107,129 @@
                 ? renderProdutividadeColaboradorTable(colaboradoresRanked)
                 : renderProdutividadeEquipeTable(equipesRanked);
             lucide.createIcons();
+        }
+
+        const PROD_AVALIACAO_CRITERIOS = [
+            { key: 'assiduidade', label: 'Assiduidade' },
+            { key: 'organizacao', label: 'Organização' },
+            { key: 'participacao', label: 'Participação' },
+            { key: 'agilidade', label: 'Agilidade' },
+            { key: 'pontualidade', label: 'Pontualidade' }
+        ];
+
+        function avaliacaoNota(value) {
+            const nota = Number(value);
+            return Number.isFinite(nota) && nota >= 1 && nota <= 5 ? nota : null;
+        }
+
+        function formatAvaliacaoMedia(value) {
+            return value === null || !Number.isFinite(value) ? '—' : value.toFixed(1).replace('.', ',');
+        }
+
+        function renderProdutividadeAvaliacoes(search) {
+            const container = document.getElementById('prodAvaliacaoContainer');
+            if (!container) return;
+
+            const rows = produtividadeAvaliacaoRows.filter(row => {
+                const nome = String(row.colaborador || '');
+                const equipe = String(row.equipe || '');
+                return !search || nome.toLowerCase().includes(search) || equipe.toLowerCase().includes(search);
+            });
+
+            if (!rows.length) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                        <h2 class="text-sm font-black text-slate-800 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-amber-500"></i> Avaliações de desempenho</h2>
+                        <p class="text-xs text-slate-400 italic mt-2">Nenhuma avaliação encontrada no período selecionado.</p>
+                    </div>`;
+                return;
+            }
+
+            const createAccumulator = () => ({
+                total: 0,
+                count: 0,
+                criterios: Object.fromEntries(PROD_AVALIACAO_CRITERIOS.map(c => [c.key, { total: 0, count: 0 }])),
+                datas: new Set(),
+                equipes: new Set()
+            });
+            const geral = createAccumulator();
+            const porColaborador = {};
+
+            rows.forEach(row => {
+                const nome = String(row.colaborador || '—');
+                if (!porColaborador[nome]) porColaborador[nome] = createAccumulator();
+                const pessoa = porColaborador[nome];
+                if (row.data || row.dataRegistro) {
+                    geral.datas.add(row.data || row.dataRegistro);
+                    pessoa.datas.add(row.data || row.dataRegistro);
+                }
+                if (row.equipe) pessoa.equipes.add(String(row.equipe));
+
+                PROD_AVALIACAO_CRITERIOS.forEach(c => {
+                    const nota = avaliacaoNota(row[c.key]);
+                    if (nota === null) return;
+                    geral.total += nota;
+                    geral.count++;
+                    geral.criterios[c.key].total += nota;
+                    geral.criterios[c.key].count++;
+                    pessoa.total += nota;
+                    pessoa.count++;
+                    pessoa.criterios[c.key].total += nota;
+                    pessoa.criterios[c.key].count++;
+                });
+            });
+
+            const media = item => item.count ? item.total / item.count : null;
+            const criterioCards = PROD_AVALIACAO_CRITERIOS.map(c => {
+                const value = media(geral.criterios[c.key]);
+                return `
+                    <div class="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${c.label}</p>
+                        <p class="text-lg font-black text-amber-600 mt-1">${formatAvaliacaoMedia(value)} <span class="text-xs">★</span></p>
+                    </div>`;
+            }).join('');
+
+            const pessoas = Object.entries(porColaborador)
+                .map(([nome, acc]) => ({ nome, acc, mediaGeral: media(acc) }))
+                .sort((a, b) => (b.mediaGeral || 0) - (a.mediaGeral || 0) || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+            const pessoasHtml = pessoas.map(({ nome, acc, mediaGeral }) => `
+                <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
+                    <td class="p-3">
+                        <div class="flex items-center gap-2">${initialsAvatarHtml(nome)}<div><p class="font-black text-slate-800 text-xs">${escapeHtml(nome)}</p><p class="text-[9px] text-slate-400">${escapeHtml(Array.from(acc.equipes).join(', ') || 'Sem equipe')}</p></div></div>
+                    </td>
+                    ${PROD_AVALIACAO_CRITERIOS.map(c => `<td class="p-3 text-center text-xs font-black text-slate-600">${formatAvaliacaoMedia(media(acc.criterios[c.key]))}</td>`).join('')}
+                    <td class="p-3 text-center"><span class="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 text-xs font-black">${formatAvaliacaoMedia(mediaGeral)} ★</span></td>
+                    <td class="p-3 text-center text-xs font-bold text-slate-500">${acc.datas.size}</td>
+                </tr>`).join('');
+
+            container.innerHTML = `
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 sm:p-5 border-b border-slate-100">
+                        <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
+                            <div>
+                                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-amber-500"></i> Avaliações de desempenho</h2>
+                                <p class="text-[11px] text-slate-400 mt-1">Médias das avaliações registradas no Encerramento do Dia.</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-black text-amber-600">${formatAvaliacaoMedia(media(geral))} ★</p>
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">${pessoas.length} colaborador(es) · ${geral.datas.size} dia(s)</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">${criterioCards}</div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[760px] text-left border-collapse">
+                            <thead><tr class="bg-slate-50 text-slate-500 text-[9px] uppercase tracking-wider">
+                                <th class="p-3 font-black">Colaborador</th>
+                                ${PROD_AVALIACAO_CRITERIOS.map(c => `<th class="p-3 font-black text-center">${c.label}</th>`).join('')}
+                                <th class="p-3 font-black text-center">Média</th>
+                                <th class="p-3 font-black text-center">Avaliações</th>
+                            </tr></thead>
+                            <tbody>${pessoasHtml}</tbody>
+                        </table>
+                    </div>
+                </section>`;
         }
 
         // ==========================================
@@ -6321,6 +6612,27 @@
                     <p class="text-sm text-slate-700 font-bold">Rende mais em <span class="text-amber-700">${CALENDAR_WEEKDAY_NAMES[bestWeekdayIndex]}</span>, com média de ${weekdayAverages[bestWeekdayIndex].toFixed(1)} caixas nesse dia.</p>
                 </div>` : '';
 
+            const avaliacoesPessoa = produtividadeAvaliacaoRows.filter(row => String(row.colaborador || '') === person.nome);
+            const mediasAvaliacao = PROD_AVALIACAO_CRITERIOS.map(c => {
+                const notas = avaliacoesPessoa.map(row => avaliacaoNota(row[c.key])).filter(v => v !== null);
+                return { ...c, media: notas.length ? notas.reduce((sum, v) => sum + v, 0) / notas.length : null };
+            });
+            const notasGerais = mediasAvaliacao.map(c => c.media).filter(v => v !== null);
+            const mediaGeralAvaliacao = notasGerais.length ? notasGerais.reduce((sum, v) => sum + v, 0) / notasGerais.length : null;
+            document.getElementById('prodProfileAvaliacao').innerHTML = avaliacoesPessoa.length ? `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mt-4">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i> Avaliação de desempenho</h3>
+                            <p class="text-[10px] text-slate-400 mt-1">${avaliacoesPessoa.length} registro(s) no período</p>
+                        </div>
+                        <span class="rounded-full bg-amber-100 text-amber-700 px-3 py-1.5 text-sm font-black">${formatAvaliacaoMedia(mediaGeralAvaliacao)} ★</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        ${mediasAvaliacao.map(c => `<div class="rounded-xl bg-amber-50 border border-amber-100 p-2.5 text-center"><p class="text-[9px] font-black text-slate-400 uppercase">${c.label}</p><p class="text-base font-black text-amber-600 mt-1">${formatAvaliacaoMedia(c.media)}</p></div>`).join('')}
+                    </div>
+                </div>` : '';
+
             const feitosSorted = [...person.feitos]
                 .filter(f => f.texto)
                 .sort((a, b) => {
@@ -6436,7 +6748,7 @@
 
             try {
                 const params = new URLSearchParams({ startDate, endDate, local });
-                const response = await fetch(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
+                const response = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' });
                 const data = await response.json();
 
                 loadingEl.classList.add('hidden');
@@ -7650,7 +7962,7 @@
         async function sendAvaliacaoToSheets(payload) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -7665,7 +7977,7 @@
         async function sendControleColaboradoresToSheets(payload) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -7680,7 +7992,7 @@
         async function sendRealizadoToSheets(updates) {
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -7698,7 +8010,7 @@
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                await fetch(SCRIPT_URL, {
+                await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -7784,7 +8096,7 @@
 
             const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
             try {
-                const response = await fetch(SCRIPT_URL, {
+                const response = await fetchWithTimeout(SCRIPT_URL, {
                     method: 'POST',
                     redirect: 'follow',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
