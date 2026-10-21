@@ -28,6 +28,7 @@
                             400: '#fbbf24',
                             500: '#f59e0b',
                             600: '#d97706',
+                            
                             700: '#b45309',
                             800: '#92400e',
                             900: '#78350f',
@@ -467,6 +468,22 @@
         <p id="loadingOverlayText" class="text-sm font-bold text-slate-600 px-6 text-center">Aguarde...</p>
     </div>
 
+    <!-- TELA INICIAL: escolha de quem está usando. Define quais abas do menu
+         aparecem (ver USUARIOS no script). Fica acima de tudo, até do overlay de
+         sincronização, enquanto ninguém foi escolhido. -->
+    <div id="userSelectScreen" class="fixed inset-0 z-[95] hidden flex items-center justify-center bg-slate-100 p-4 overflow-y-auto">
+        <div class="w-full max-w-sm">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-14 h-14 rounded-2xl shadow-sm border border-slate-100 bg-brand-100 flex items-center justify-center text-brand-600 mb-3">
+                    <i data-lucide="tractor" class="w-7 h-7"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-800">SPG SEDE</h1>
+                <p class="text-sm text-slate-500 mt-1">Quem está usando?</p>
+            </div>
+            <div id="userSelectList" class="space-y-2.5"></div>
+        </div>
+    </div>
+
     <!-- BACKDROP DO MODO PAISAGEM: fica atrás da tabela girada; tocar nele também fecha -->
     <div id="landscapeModeBackdrop" class="landscape-mode-backdrop" onclick="exitLandscapeMode()"></div>
 
@@ -505,6 +522,9 @@
                 <button type="button" class="dash-nav-item" data-view="caixas" onclick="switchDashboardView('caixas')">
                     <i data-lucide="package-check" class="w-4 h-4 shrink-0"></i><span class="dash-sidebar-label">Caixas</span>
                 </button>
+                <button type="button" class="dash-nav-item" data-view="limpeza" onclick="switchDashboardView('limpeza')">
+                    <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i><span class="dash-sidebar-label">Limpeza</span>
+                </button>
                 <button type="button" class="dash-nav-item" data-view="servicos" onclick="switchDashboardView('servicos')">
                     <i data-lucide="wrench" class="w-4 h-4 shrink-0"></i><span class="dash-sidebar-label">Serviços</span>
                 </button>
@@ -516,6 +536,9 @@
                 </button>
                 <button type="button" class="dash-nav-item" data-view="historico" onclick="switchDashboardView('historico')">
                     <i data-lucide="history" class="w-4 h-4 shrink-0"></i><span class="dash-sidebar-label">Histórico</span>
+                </button>
+                <button type="button" class="dash-nav-item md:mt-3 md:border-t md:border-slate-100 md:rounded-none md:pt-3" onclick="trocarUsuario()" title="Trocar usuário">
+                    <i data-lucide="log-out" class="w-4 h-4 shrink-0"></i><span class="dash-sidebar-label"><span id="usuarioAtualNome"></span><span class="hidden md:block text-[10px] font-bold text-slate-400">Trocar usuário</span></span>
                 </button>
             </nav>
         </aside>
@@ -871,6 +894,71 @@
                 </div>
 
                 <div id="caixasCollaboratorCards" class="space-y-2"></div>
+            </div>
+
+            <!-- LIMPEZA (checklist diário de limpeza: cada área é marcada como
+                 feita ✓ ou não feita ✗ numa data escolhida, com local e quem fez) -->
+            <div id="view-limpeza" class="dash-view hidden p-4 sm:p-6 lg:p-8 pb-28 sm:pb-8">
+                <div class="mb-5">
+                    <h1 class="text-2xl sm:text-3xl font-black text-slate-800">Limpeza</h1>
+                    <p class="text-sm text-slate-500 mt-1">Marque <span class="font-black text-emerald-600">✓</span> se a limpeza foi feita ou <span class="font-black text-red-600">✗</span> se não foi. Informe quem fez a limpeza uma vez só, no topo.</p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4 flex flex-wrap items-center gap-3 max-w-2xl">
+                    <div class="flex items-center gap-2">
+                        <label for="limpezaDate" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data</label>
+                        <input type="date" id="limpezaDate" onchange="loadLimpezaForDate()" class="p-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
+                    </div>
+                    <span id="limpezaProgress" class="text-xs font-black text-slate-500 bg-slate-100 rounded-full px-3 py-1"></span>
+                    <button type="button" onclick="openLimpezaRotinaPanel()" class="ml-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-black text-slate-600 transition-colors">
+                        <i data-lucide="calendar-days" class="w-4 h-4"></i> Minha rotina
+                    </button>
+                    <div class="w-full">
+                        <label for="limpezaQuemFez" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quem fez a limpeza</label>
+                        <div id="limpezaQuemFezBox" class="relative mt-1">
+                            <input type="text" id="limpezaQuemFez" autocomplete="off" placeholder="Pesquisar colaborador..."
+                                oninput="renderLimpezaQuemFezDropdown()"
+                                onfocus="renderLimpezaQuemFezDropdown(true)"
+                                onkeydown="handleLimpezaQuemFezKeydown(event)"
+                                class="w-full p-3 pr-10 border border-slate-200 rounded-xl text-base sm:text-sm bg-slate-50 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-bold text-slate-700 shadow-sm">
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            <div id="limpezaQuemFezDropdown" class="hidden absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-60 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rotina da semana: quem faz a limpeza escolhe as tarefas de cada
+                     dia e a ordem; o checklist da data passa a seguir essa lista -->
+                <div id="limpezaRotinaPanel" class="hidden bg-white rounded-2xl border border-brand-200 shadow-sm p-4 mb-4 max-w-2xl">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <h2 class="text-base font-black text-slate-800">Minha rotina da semana</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Escolha as tarefas de cada dia e coloque na ordem em que você faz. Dia sem nenhuma tarefa mostra todas as áreas.</p>
+                        </div>
+                        <button type="button" onclick="closeLimpezaRotinaPanel()" aria-label="Fechar" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div id="limpezaRotinaDias" class="flex gap-1.5 overflow-x-auto pb-1"></div>
+                    <div id="limpezaRotinaLista" class="mt-3 space-y-2"></div>
+                    <div id="limpezaRotinaAdd" class="mt-4"></div>
+                    <div class="mt-4 flex gap-2 justify-end">
+                        <button type="button" onclick="closeLimpezaRotinaPanel()" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-black text-slate-600">Cancelar</button>
+                        <button type="button" id="limpezaRotinaSaveBtn" onclick="saveLimpezaRotina()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-black shadow-sm">
+                            <i data-lucide="save" class="w-4 h-4"></i> Salvar rotina
+                        </button>
+                    </div>
+                </div>
+
+                <div id="limpezaChecklist" class="space-y-2.5 max-w-2xl"></div>
+
+                <!-- No celular o botão fica preso no rodapé, sempre ao alcance do polegar -->
+                <div class="limpeza-save-bar fixed sm:static bottom-0 left-0 right-0 z-20 bg-white/95 sm:bg-transparent backdrop-blur sm:backdrop-blur-none border-t border-slate-200 sm:border-0 p-3 sm:p-0 sm:mt-5 max-w-2xl flex gap-2">
+                    <button type="button" id="limpezaImageBtn" onclick="exportLimpezaImage()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3.5 sm:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-base sm:text-sm font-black rounded-xl transition-all active:scale-95 shadow-sm whitespace-nowrap">
+                        <i data-lucide="image" class="w-4 h-4"></i> <span class="sm:hidden">Imagem</span><span class="hidden sm:inline">Gerar Imagem</span>
+                    </button>
+                    <button type="button" id="limpezaSaveBtn" onclick="saveLimpeza()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-3.5 sm:py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-base sm:text-sm font-black rounded-xl transition-all active:scale-95 shadow-sm">
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvar
+                    </button>
+                </div>
             </div>
 
             <!-- SERVIÇOS -->
@@ -2834,6 +2922,7 @@
             updateBtnFecharDia();
 
             updateDashSetorLabel();
+            initUsuarioAtual();
 
             Promise.allSettled([
                 loadTeams(),
@@ -5067,7 +5156,78 @@
         // SHELL DO DASHBOARD (menu lateral + páginas)
         // ==========================================
 
+        // ==========================================
+        // USUÁRIOS (tela inicial "Quem está usando?")
+        // `abas: null` = painel inteiro; senão, só as abas listadas (a primeira
+        // abre ao entrar). É só uma separação de menu, sem senha: qualquer um
+        // que abrir o app pode escolher qualquer nome.
+        // ==========================================
+
+        const USUARIOS = [
+            { nome: 'Guilherme Ramos', abas: null },
+            { nome: 'Myrla Ferreira', abas: null },
+            { nome: 'Maria Ramalho', abas: ['limpeza'] }
+        ];
+        const USUARIO_STORAGE_KEY = 'spg_usuarioAtual';
+        let usuarioAtual = null;
+
+        function usuarioPodeVer(view) {
+            return !usuarioAtual || !usuarioAtual.abas || usuarioAtual.abas.includes(view);
+        }
+
+        function initUsuarioAtual() {
+            let salvo = null;
+            try { salvo = localStorage.getItem(USUARIO_STORAGE_KEY); } catch (e) { /* sem localStorage: pergunta sempre */ }
+            const usuario = USUARIOS.find(u => u.nome === salvo);
+            if (usuario) entrarComoUsuario(usuario.nome);
+            else showUserSelectScreen();
+        }
+
+        function showUserSelectScreen() {
+            document.getElementById('userSelectList').innerHTML = USUARIOS.map(u => {
+                const iniciais = u.nome.split(' ').map(p => p[0]).slice(0, 2).join('');
+                return `
+                <button type="button" data-nome="${escapeHtml(u.nome)}" onclick="entrarComoUsuario(this.dataset.nome)" class="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-brand-400 hover:bg-brand-50 shadow-sm text-left transition-all active:scale-[0.98]">
+                    <span class="w-11 h-11 shrink-0 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-black">${escapeHtml(iniciais)}</span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-base font-black text-slate-800">${escapeHtml(u.nome)}</span>
+                        <span class="block text-xs font-bold text-slate-400">${u.abas ? 'Limpeza' : 'Painel completo'}</span>
+                    </span>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-slate-300"></i>
+                </button>`;
+            }).join('');
+            document.getElementById('userSelectScreen').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function entrarComoUsuario(nome) {
+            const usuario = USUARIOS.find(u => u.nome === nome);
+            if (!usuario) return;
+            usuarioAtual = usuario;
+            try { localStorage.setItem(USUARIO_STORAGE_KEY, usuario.nome); } catch (e) { /* segue sem lembrar */ }
+            document.getElementById('usuarioAtualNome').textContent = usuario.nome.split(' ')[0];
+            // style.display (e não a classe hidden) porque .dash-nav-item já define display.
+            document.querySelectorAll('.dash-nav-item[data-view]').forEach(btn => {
+                btn.style.display = usuarioPodeVer(btn.dataset.view) ? '' : 'none';
+            });
+            document.getElementById('userSelectScreen').classList.add('hidden');
+            // Só troca de aba se a atual não for permitida — assim quem tem o painel
+            // inteiro não recarrega a Programação à toa ao entrar.
+            const atual = document.querySelector('.dash-nav-item.active[data-view]');
+            if (!atual || !usuarioPodeVer(atual.dataset.view)) switchDashboardView(usuario.abas[0]);
+            lucide.createIcons();
+        }
+
+        function trocarUsuario() {
+            try { localStorage.removeItem(USUARIO_STORAGE_KEY); } catch (e) { /* nada a limpar */ }
+            usuarioAtual = null;
+            showUserSelectScreen();
+        }
+
         function switchDashboardView(view) {
+            // Usuário com acesso restrito nunca abre uma aba fora da lista dele,
+            // mesmo que algum atalho do app tente navegar pra lá.
+            if (!usuarioPodeVer(view)) view = usuarioAtual.abas[0];
             document.querySelectorAll('.dash-view').forEach(el => el.classList.add('hidden'));
             const target = document.getElementById(`view-${view}`);
             if (target) target.classList.remove('hidden');
@@ -5082,6 +5242,7 @@
             if (view === 'equipes') { renderEquipesPage(); loadTeams(); }
             if (view === 'produtividade') initProdutividadePage();
             if (view === 'caixas') initCaixasPage();
+            if (view === 'limpeza') initLimpezaPage();
             if (view === 'servicos') { renderServicosPage(); loadServicos(); }
             if (view === 'relatorios') loadRelatorioData();
             if (view === 'historico') initHistoricoPage();
@@ -5883,9 +6044,12 @@
         let dashboardRows = [];
         let _dashboardLoadId = 0;
 
+        function dateToInputValue(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
         function todayDateInputValue() {
-            const today = new Date();
-            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            return dateToInputValue(new Date());
         }
 
         // Setor exibido na página "Programação" — sempre o mesmo setor ativo em
@@ -7163,6 +7327,756 @@
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
                 lucide.createIcons();
+            }
+        }
+
+        // ==========================================
+        // LIMPEZA (checklist diário por área) — cada área é respondida só com
+        // ✓ (feito) ou ✗ (não feito); depois de responder aparece "Local" (pra
+        // detalhar, ex: "Banheiro masculino"). "Quem fez" é um campo só, no topo,
+        // valendo pro dia todo (lista suspensa de dbColaboradores, aceita outro nome);
+        // na planilha ele é repetido em cada linha. Também dá pra adicionar locais extras que não
+        // estão na lista fixa. Salva na aba "Limpeza" da planilha; o backend
+        // substitui o dia inteiro a cada salvamento, então desmarcar ou remover
+        // um local extra e salvar de novo também some da planilha.
+        // ==========================================
+
+        const LIMPEZA_ITENS = [
+            { area: 'Almoxarifado', icon: 'warehouse' },
+            { area: 'Casa dos Biológicos', icon: 'flask-conical' },
+            { area: 'Banheiros', icon: 'bath' },
+            { area: 'Sala do T.I', icon: 'monitor' },
+            { area: 'Cozinha', icon: 'utensils' },
+            { area: 'Escritório', icon: 'briefcase' },
+            { area: 'Refeitório', icon: 'soup' },
+            { area: 'Vestiário', icon: 'shirt' },
+            { area: 'Área externa / Pátio', icon: 'trees' }
+        ];
+
+        const LIMPEZA_QUEM_FEZ_PADRAO = 'Maria Ramalho';
+        let _limpezaLoadId = 0;
+        // Uma entrada por card: as fixas (LIMPEZA_ITENS) + locais extras do dia.
+        // { area, icon, prioridade?, extra, status: 'Feito'|'Não feito'|'', local, motivo }
+        let limpezaEntries = [];
+
+        // Rotina da semana ("Minha rotina"):
+        // { 'Segunda-feira': [{ tarefa: 'Banheiros', prioridade: 'Alta' }, ...], ... }.
+        // A ordem da lista é a ordem dos cards no checklist; dia sem tarefas usa
+        // LIMPEZA_ITENS inteiro. Fica na aba "Limpeza Rotina" da planilha (vale
+        // em qualquer aparelho) com cópia no localStorage pra abrir sem esperar.
+        const LIMPEZA_ROTINA_STORAGE_KEY = 'spg_limpezaRotina_cache';
+        const LIMPEZA_PRIORIDADES = {
+            'Alta':  { cls: 'bg-red-100 text-red-700 border-red-200', bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' },
+            'Média': { cls: 'bg-amber-100 text-amber-700 border-amber-200', bg: '#fef3c7', color: '#b45309', border: '#fcd34d' },
+            'Baixa': { cls: 'bg-sky-100 text-sky-700 border-sky-200', bg: '#e0f2fe', color: '#0369a1', border: '#7dd3fc' }
+        };
+        const LIMPEZA_PRIORIDADE_PADRAO = 'Média';
+        let limpezaRotina = {};
+        let _limpezaRotinaPromise = null;
+        let limpezaRotinaDraft = null;
+        let limpezaRotinaDiaEditando = daysOfWeek[0];
+
+        function limpezaDiaDaSemana(dateVal) {
+            const [y, m, d] = dateVal.split('-').map(Number);
+            return daysOfWeek[(new Date(y, m - 1, d).getDay() + 6) % 7];
+        }
+
+        // Tarefa da rotina que não é uma das áreas fixas ganha um ícone genérico.
+        function limpezaItemDaTarefa(area) {
+            return LIMPEZA_ITENS.find(item => item.area === area) || { area, icon: 'list-checks' };
+        }
+
+        function newLimpezaEntries(dateVal) {
+            const tarefas = (dateVal && limpezaRotina[limpezaDiaDaSemana(dateVal)]) || [];
+            const itens = tarefas.length
+                ? tarefas.map(t => ({ ...limpezaItemDaTarefa(t.tarefa), prioridade: t.prioridade }))
+                : LIMPEZA_ITENS;
+            return itens.map(item => ({ ...item, extra: false, status: '', local: '', motivo: '' }));
+        }
+
+        function normalizeLimpezaTarefa(t) {
+            if (typeof t === 'string') return { tarefa: t, prioridade: LIMPEZA_PRIORIDADE_PADRAO };
+            return {
+                tarefa: String((t && t.tarefa) || ''),
+                prioridade: LIMPEZA_PRIORIDADES[t && t.prioridade] ? t.prioridade : LIMPEZA_PRIORIDADE_PADRAO
+            };
+        }
+
+        function loadLimpezaRotinaFromCache() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(LIMPEZA_ROTINA_STORAGE_KEY) || '{}');
+                limpezaRotina = {};
+                // Cache da versão anterior guardava só o nome (string) de cada tarefa.
+                if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+                    daysOfWeek.forEach(dia => {
+                        if (Array.isArray(saved[dia])) limpezaRotina[dia] = saved[dia].map(normalizeLimpezaTarefa).filter(t => t.tarefa);
+                    });
+                }
+            } catch (e) {
+                limpezaRotina = {};
+            }
+        }
+
+        function persistLimpezaRotina() {
+            try {
+                localStorage.setItem(LIMPEZA_ROTINA_STORAGE_KEY, JSON.stringify(limpezaRotina));
+            } catch (e) { /* sem localStorage: segue só com a planilha */ }
+        }
+
+        async function loadLimpezaRotinaFromSheet() {
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                const params = new URLSearchParams({ local: 'Limpeza Rotina' });
+                const data = await fetchWithTimeout(`${SCRIPT_URL}?${params}`, { redirect: 'follow' }).then(r => r.json());
+                // Sem "rotina: true" a resposta veio de um script antigo (leitura
+                // genérica, rows vazio) — não apaga a rotina guardada no aparelho.
+                if (!data || data.status !== 'sucesso' || !data.rotina || !Array.isArray(data.rows)) return;
+                const rotina = {};
+                data.rows.slice().sort((a, b) => a.ordem - b.ordem).forEach(row => {
+                    if (!daysOfWeek.includes(row.dia) || !row.tarefa) return;
+                    (rotina[row.dia] = rotina[row.dia] || []).push(normalizeLimpezaTarefa(row));
+                });
+                limpezaRotina = rotina;
+                persistLimpezaRotina();
+            } catch (err) {
+                console.error('Erro ao carregar rotina da limpeza:', err);
+            }
+        }
+
+        function initLimpezaPage() {
+            const dateInput = document.getElementById('limpezaDate');
+            if (!dateInput.value) dateInput.value = todayDateInputValue();
+            loadLimpezaRotinaFromCache();
+            _limpezaRotinaPromise = loadLimpezaRotinaFromSheet();
+            prefetchLimpezaRecente();
+            loadLimpezaForDate();
+        }
+
+        function openLimpezaRotinaPanel() {
+            limpezaRotinaDraft = JSON.parse(JSON.stringify(limpezaRotina));
+            const dateVal = document.getElementById('limpezaDate').value;
+            limpezaRotinaDiaEditando = dateVal ? limpezaDiaDaSemana(dateVal) : daysOfWeek[0];
+            document.getElementById('limpezaRotinaPanel').classList.remove('hidden');
+            renderLimpezaRotinaEditor();
+        }
+
+        function closeLimpezaRotinaPanel() {
+            document.getElementById('limpezaRotinaPanel').classList.add('hidden');
+            limpezaRotinaDraft = null;
+        }
+
+        function renderLimpezaRotinaEditor() {
+            const dia = limpezaRotinaDiaEditando;
+            const tarefas = limpezaRotinaDraft[dia] || [];
+
+            document.getElementById('limpezaRotinaDias').innerHTML = daysOfWeek.map(d => {
+                const count = (limpezaRotinaDraft[d] || []).length;
+                const active = d === dia;
+                return `
+                <button type="button" onclick="selectLimpezaRotinaDia('${d}')" aria-pressed="${active}" class="shrink-0 px-3 py-2 rounded-xl border text-xs font-black transition-colors ${active ? 'bg-brand-500 border-brand-500 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}">
+                    ${d.slice(0, 3)}${count ? ` <span class="${active ? 'text-white/80' : 'text-slate-400'}">${count}</span>` : ''}
+                </button>`;
+            }).join('');
+
+            const iconBtn = 'w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none';
+            document.getElementById('limpezaRotinaLista').innerHTML = `
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">Ordem da limpeza de ${dia.toLowerCase()}</p>
+                    ${tarefas.length > 1 ? `<button type="button" onclick="sortLimpezaRotinaPorPrioridade()" class="inline-flex items-center gap-1 text-[11px] font-black text-brand-700 hover:text-brand-600"><i data-lucide="arrow-down-wide-narrow" class="w-3.5 h-3.5"></i> Ordenar por prioridade</button>` : ''}
+                </div>` +
+                (tarefas.length ? tarefas.map((t, i) => `
+                <div class="p-1.5 pl-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 shrink-0 rounded-lg bg-brand-100 text-brand-700 text-xs font-black flex items-center justify-center">${i + 1}º</span>
+                        <i data-lucide="${limpezaItemDaTarefa(t.tarefa).icon}" class="w-4 h-4 shrink-0 text-slate-400"></i>
+                        <span class="flex-1 min-w-0 truncate text-sm font-bold text-slate-700">${escapeHtml(t.tarefa)}</span>
+                        <button type="button" ${i === 0 ? 'disabled' : ''} onclick="moveLimpezaRotinaTarefa(${i}, -1)" aria-label="Subir" class="${iconBtn}"><i data-lucide="chevron-up" class="w-5 h-5"></i></button>
+                        <button type="button" ${i === tarefas.length - 1 ? 'disabled' : ''} onclick="moveLimpezaRotinaTarefa(${i}, 1)" aria-label="Descer" class="${iconBtn}"><i data-lucide="chevron-down" class="w-5 h-5"></i></button>
+                        <button type="button" onclick="removeLimpezaRotinaTarefa(${i})" aria-label="Remover tarefa" class="${iconBtn} hover:!text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-1.5 pl-8 pb-0.5">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Prioridade</span>
+                        ${Object.keys(LIMPEZA_PRIORIDADES).map(p => `
+                        <button type="button" onclick="setLimpezaRotinaPrioridade(${i}, '${p}')" aria-pressed="${t.prioridade === p}" class="px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors ${t.prioridade === p ? LIMPEZA_PRIORIDADES[p].cls : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}">${p}</button>`).join('')}
+                    </div>
+                </div>`).join('')
+                : `<p class="text-sm text-slate-400 p-3 rounded-xl border border-dashed border-slate-200 text-center">Nenhuma tarefa escolhida — nesse dia aparecem todas as áreas.</p>`);
+
+            const disponiveis = LIMPEZA_ITENS.filter(item => !tarefas.some(t => t.tarefa === item.area));
+            document.getElementById('limpezaRotinaAdd').innerHTML = `
+                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">Adicionar tarefa</p>
+                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                    ${disponiveis.map(item => `
+                    <button type="button" data-area="${escapeHtml(item.area)}" onclick="addLimpezaRotinaTarefa(this.dataset.area)" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-brand-400 hover:text-brand-700 text-xs font-bold text-slate-600 transition-colors">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>${escapeHtml(item.area)}
+                    </button>`).join('')}
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="limpezaRotinaNova" placeholder="Outra tarefa (ex: Lavar lixeiras)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); addLimpezaRotinaTarefaNova(); }"
+                        class="flex-1 min-w-0 p-2.5 border border-slate-200 rounded-lg text-base sm:text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-medium text-slate-700">
+                    <button type="button" onclick="addLimpezaRotinaTarefaNova()" class="px-4 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-sm font-black">Adicionar</button>
+                </div>`;
+            lucide.createIcons();
+        }
+
+        function selectLimpezaRotinaDia(dia) {
+            limpezaRotinaDiaEditando = dia;
+            renderLimpezaRotinaEditor();
+        }
+
+        function addLimpezaRotinaTarefa(area) {
+            const nome = String(area || '').trim();
+            if (!nome) return;
+            const dia = limpezaRotinaDiaEditando;
+            const tarefas = limpezaRotinaDraft[dia] = limpezaRotinaDraft[dia] || [];
+            if (tarefas.some(t => t.tarefa.toLowerCase() === nome.toLowerCase())) return;
+            tarefas.push({ tarefa: nome, prioridade: LIMPEZA_PRIORIDADE_PADRAO });
+            renderLimpezaRotinaEditor();
+        }
+
+        function setLimpezaRotinaPrioridade(index, prioridade) {
+            limpezaRotinaDraft[limpezaRotinaDiaEditando][index].prioridade = prioridade;
+            renderLimpezaRotinaEditor();
+        }
+
+        // Alta → Média → Baixa; dentro da mesma prioridade mantém a ordem atual.
+        function sortLimpezaRotinaPorPrioridade() {
+            const peso = Object.keys(LIMPEZA_PRIORIDADES);
+            const tarefas = limpezaRotinaDraft[limpezaRotinaDiaEditando] || [];
+            tarefas.sort((a, b) => peso.indexOf(a.prioridade) - peso.indexOf(b.prioridade));
+            renderLimpezaRotinaEditor();
+        }
+
+        function addLimpezaRotinaTarefaNova() {
+            addLimpezaRotinaTarefa(document.getElementById('limpezaRotinaNova').value);
+            document.getElementById('limpezaRotinaNova').focus();
+        }
+
+        function moveLimpezaRotinaTarefa(index, delta) {
+            const tarefas = limpezaRotinaDraft[limpezaRotinaDiaEditando] || [];
+            const alvo = index + delta;
+            if (alvo < 0 || alvo >= tarefas.length) return;
+            [tarefas[index], tarefas[alvo]] = [tarefas[alvo], tarefas[index]];
+            renderLimpezaRotinaEditor();
+        }
+
+        function removeLimpezaRotinaTarefa(index) {
+            limpezaRotinaDraft[limpezaRotinaDiaEditando].splice(index, 1);
+            renderLimpezaRotinaEditor();
+        }
+
+        async function saveLimpezaRotina() {
+            const rotina = {};
+            daysOfWeek.forEach(dia => {
+                if ((limpezaRotinaDraft[dia] || []).length) rotina[dia] = limpezaRotinaDraft[dia].map(t => ({ ...t }));
+            });
+
+            const btn = document.getElementById('limpezaRotinaSaveBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Salvando...';
+            lucide.createIcons();
+
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetchWithTimeout(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'saveLimpezaRotina', rotina })
+                });
+                limpezaRotina = rotina;
+                persistLimpezaRotina();
+                closeLimpezaRotinaPanel();
+                applyLimpezaRotinaAoChecklist();
+                showMessageModal('Rotina salva', 'O checklist de cada dia agora segue a sua rotina.', 'success');
+            } catch (err) {
+                console.error('Erro ao salvar rotina da limpeza:', err);
+                showMessageModal('Erro', 'Não foi possível salvar a rotina. Verifique a conexão e tente de novo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }
+        }
+
+        // Remonta o checklist da data aberta com a rotina nova sem perder o que já
+        // foi marcado na tela: resposta de tarefa que saiu da rotina vira local extra.
+        function applyLimpezaRotinaAoChecklist() {
+            const dateVal = document.getElementById('limpezaDate').value;
+            if (!dateVal) return;
+            const anteriores = limpezaEntries;
+            limpezaEntries = newLimpezaEntries(dateVal);
+            anteriores.forEach(old => {
+                if (!old.status && !(old.extra && old.area.trim())) return;
+                const match = limpezaEntries.find(entry => !entry.extra && entry.area === old.area);
+                if (match) Object.assign(match, { status: old.status, local: old.local, motivo: old.motivo });
+                else limpezaEntries.push({ ...old, icon: 'map-pin', extra: true });
+            });
+            renderLimpezaChecklist(false);
+        }
+
+        // "Quem fez" — lista suspensa no mesmo visual da de colaboradores da
+        // Programação, mas de escolha única (um nome só pro dia). Nome fora do
+        // cadastro entra pela opção "Usar ..." no fim da lista.
+        function renderLimpezaQuemFezDropdown(showAll = false) {
+            const input = document.getElementById('limpezaQuemFez');
+            const dropdown = document.getElementById('limpezaQuemFezDropdown');
+            const typed = input.value.trim();
+            // Ao focar com um nome já escolhido, mostra a lista toda (não só ele).
+            const query = (showAll && dbColaboradores.includes(typed)) ? '' : typed.toLowerCase();
+            const matches = dbColaboradores.filter(name => !query || name.toLowerCase().includes(query));
+
+            const optionClass = 'w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold hover:bg-brand-50 transition-colors';
+            let html = matches.map(name => {
+                const selected = name === typed;
+                return `
+                <button type="button" data-name="${escapeHtml(name)}" class="${optionClass} ${selected ? 'bg-brand-50 text-brand-700' : 'text-slate-700'}" onclick="selectLimpezaQuemFez(this.dataset.name)">
+                    <span>${escapeHtml(name)}</span>
+                    ${selected ? '<i data-lucide="check" class="w-4 h-4 text-brand-500"></i>' : ''}
+                </button>`;
+            }).join('');
+            if (!matches.length) {
+                html = `<div class="px-4 py-3 text-xs text-slate-400">Nenhum colaborador encontrado.</div>`;
+            }
+            if (typed && !dbColaboradores.some(name => name.toLowerCase() === typed.toLowerCase())) {
+                html += `
+                <div class="border-t border-slate-100"></div>
+                <button type="button" data-name="${escapeHtml(typed)}" class="${optionClass} text-brand-700" onclick="selectLimpezaQuemFez(this.dataset.name)">
+                    <span>Usar "${escapeHtml(typed)}"</span>
+                    <i data-lucide="user-plus" class="w-4 h-4 text-brand-500"></i>
+                </button>`;
+            }
+            dropdown.innerHTML = html;
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function selectLimpezaQuemFez(name) {
+            document.getElementById('limpezaQuemFez').value = name;
+            document.getElementById('limpezaQuemFezDropdown').classList.add('hidden');
+            limpezaDirty = true;
+        }
+
+        function handleLimpezaQuemFezKeydown(event) {
+            const dropdown = document.getElementById('limpezaQuemFezDropdown');
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const first = dropdown.querySelector('button[data-name]');
+                if (first) selectLimpezaQuemFez(first.dataset.name);
+                event.target.blur();
+                return;
+            }
+            if (event.key === 'Escape') dropdown.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('#limpezaQuemFezBox')) return;
+            const dropdown = document.getElementById('limpezaQuemFezDropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        });
+
+        // Cache das respostas por data ({ 'dd/mm/aaaa': rows }), guardado no
+        // aparelho. Trocar de data mostra o cache na hora e confere a planilha em
+        // segundo plano; ao abrir a aba, os últimos LIMPEZA_PREFETCH_DIAS vêm
+        // numa busca só. Data fora do cache cai na busca normal com "Carregando".
+        const LIMPEZA_CACHE_STORAGE_KEY = 'spg_limpezaCache';
+        const LIMPEZA_PREFETCH_DIAS = 60;
+        const LIMPEZA_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+        let limpezaCache = null;
+        let _limpezaPrefetchPromise = null;
+        // true quando ela já mexeu no checklist aberto: a atualização em segundo
+        // plano não sobrescreve o que está sendo preenchido.
+        let limpezaDirty = false;
+
+        function getLimpezaCache() {
+            if (!limpezaCache) {
+                try {
+                    const saved = JSON.parse(localStorage.getItem(LIMPEZA_CACHE_STORAGE_KEY) || '{}');
+                    limpezaCache = (saved && typeof saved === 'object' && !Array.isArray(saved)) ? saved : {};
+                } catch (e) {
+                    limpezaCache = {};
+                }
+            }
+            return limpezaCache;
+        }
+
+        function persistLimpezaCache() {
+            try {
+                localStorage.setItem(LIMPEZA_CACHE_STORAGE_KEY, JSON.stringify(limpezaCache));
+            } catch (e) { /* cheio ou bloqueado: o cache fica só na memória */ }
+        }
+
+        function limpezaDateShort(dateVal) {
+            const [y, m, d] = dateVal.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        // Busca as linhas da aba Limpeza entre duas datas (YYYY-MM-DD) e grava no
+        // cache cada dia do intervalo — inclusive os sem nada salvo, como [].
+        async function fetchLimpezaRange(startVal, endVal) {
+            const params = new URLSearchParams({ startDate: startVal, endDate: endVal, local: 'Limpeza' });
+            const data = await fetchWithTimeout(`${LIMPEZA_SCRIPT_URL}?${params}`, { redirect: 'follow' }).then(r => r.json());
+            if (!data || data.status !== 'sucesso' || !Array.isArray(data.rows)) throw new Error('Resposta inválida da planilha');
+            const cache = getLimpezaCache();
+            const [sy, sm, sd] = startVal.split('-').map(Number);
+            const [ey, em, ed] = endVal.split('-').map(Number);
+            for (let dt = new Date(sy, sm - 1, sd), end = new Date(ey, em - 1, ed); dt <= end; dt.setDate(dt.getDate() + 1)) {
+                cache[limpezaDateShort(dateToInputValue(dt))] = [];
+            }
+            data.rows.forEach(row => {
+                if (row.status !== 'Feito' && row.status !== 'Não feito') return;
+                (cache[row.data] = cache[row.data] || []).push({
+                    area: row.area, status: row.status, localDetalhe: row.localDetalhe || '',
+                    motivo: row.motivo || '', quemFez: row.quemFez || ''
+                });
+            });
+            persistLimpezaCache();
+        }
+
+        function prefetchLimpezaRecente() {
+            const hoje = new Date();
+            const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - LIMPEZA_PREFETCH_DIAS);
+            _limpezaPrefetchPromise = fetchLimpezaRange(dateToInputValue(inicio), dateToInputValue(hoje))
+                .catch(err => console.error('Erro ao pré-carregar limpezas recentes:', err))
+                .finally(() => { _limpezaPrefetchPromise = null; });
+            return _limpezaPrefetchPromise;
+        }
+
+        function applyLimpezaRows(dateVal, rows) {
+            limpezaEntries = newLimpezaEntries(dateVal);
+            const quemFezInput = document.getElementById('limpezaQuemFez');
+            // Padrão: Maria Ramalho; se o dia já tiver um nome salvo, ele substitui.
+            quemFezInput.value = LIMPEZA_QUEM_FEZ_PADRAO;
+            let quemFezSalvo = false;
+            rows.forEach(row => {
+                if (row.quemFez && !quemFezSalvo) { quemFezInput.value = row.quemFez; quemFezSalvo = true; }
+                const saved = { status: row.status, local: row.localDetalhe || '', motivo: row.motivo || '' };
+                const fixed = limpezaEntries.find(entry => !entry.extra && entry.area === row.area);
+                if (fixed) Object.assign(fixed, saved);
+                else limpezaEntries.push({ area: row.area, icon: 'map-pin', extra: true, ...saved });
+            });
+        }
+
+        async function loadLimpezaForDate() {
+            const loadId = ++_limpezaLoadId;
+            const dateVal = document.getElementById('limpezaDate').value;
+            if (!dateVal) return;
+            const dateShort = limpezaDateShort(dateVal);
+            limpezaDirty = false;
+
+            const cached = getLimpezaCache()[dateShort];
+            applyLimpezaRows(dateVal, cached || []);
+            renderLimpezaChecklist(!cached);
+
+            try {
+                // Se o pré-carregamento já está buscando essa data, espera ele em vez
+                // de abrir outra requisição.
+                const pendente = _limpezaPrefetchPromise;
+                if (pendente) await pendente;
+                if (!pendente || !getLimpezaCache()[dateShort]) await fetchLimpezaRange(dateVal, dateVal);
+                await _limpezaRotinaPromise;
+            } catch (err) {
+                console.error('Erro ao carregar checklist de limpeza:', err);
+            }
+            if (loadId !== _limpezaLoadId) return;
+            // Não atropela o que ela já começou a marcar enquanto a busca rodava.
+            if (cached && limpezaDirty) return;
+            applyLimpezaRows(dateVal, getLimpezaCache()[dateShort] || []);
+            renderLimpezaChecklist(false);
+        }
+
+        function setLimpezaResposta(index, status) {
+            const entry = limpezaEntries[index];
+            entry.status = entry.status === status ? '' : status;
+            limpezaDirty = true;
+            renderLimpezaChecklist(false);
+        }
+
+        // Campos de texto só atualizam o estado (sem re-renderizar), pra não
+        // tirar o foco/teclado do celular a cada letra digitada.
+        function setLimpezaCampo(index, campo, value) {
+            limpezaEntries[index][campo] = value;
+            limpezaDirty = true;
+        }
+
+        function addLimpezaExtra() {
+            limpezaEntries.push({ area: '', icon: 'map-pin', extra: true, status: '', local: '', motivo: '' });
+            limpezaDirty = true;
+            renderLimpezaChecklist(false);
+            const inputs = document.querySelectorAll('#limpezaChecklist .limpeza-extra-nome');
+            if (inputs.length) inputs[inputs.length - 1].focus();
+        }
+
+        function removeLimpezaExtra(index) {
+            limpezaEntries.splice(index, 1);
+            limpezaDirty = true;
+            renderLimpezaChecklist(false);
+        }
+
+        function renderLimpezaChecklist(loading) {
+            const container = document.getElementById('limpezaChecklist');
+            const progress = document.getElementById('limpezaProgress');
+            const respondidas = limpezaEntries.filter(entry => entry.status).length;
+            const dateVal = document.getElementById('limpezaDate').value;
+            const dia = dateVal ? limpezaDiaDaSemana(dateVal) : '';
+            const rotinaLabel = dia && (limpezaRotina[dia] || []).length ? `Rotina de ${dia.toLowerCase()} · ` : '';
+            progress.textContent = loading ? 'Carregando...' : `${rotinaLabel}${respondidas} de ${limpezaEntries.length} respondidas`;
+
+            const inputClass = 'w-full p-2.5 border border-slate-200 rounded-lg text-base sm:text-sm bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none font-medium text-slate-700';
+            const cards = limpezaEntries.map((entry, i) => {
+                const feito = entry.status === 'Feito';
+                const naoFeito = entry.status === 'Não feito';
+                const cardBorder = feito ? 'border-emerald-300 bg-emerald-50/60' : (naoFeito ? 'border-red-300 bg-red-50/60' : 'border-slate-200 bg-white');
+                const iconBox = feito ? 'bg-emerald-100 text-emerald-600' : (naoFeito ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500');
+                const titulo = entry.extra
+                    ? `<p class="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">Local extra
+                            <button type="button" onclick="removeLimpezaExtra(${i})" aria-label="Remover local extra" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                       </p>
+                       <input type="text" class="limpeza-extra-nome ${inputClass} mt-0.5 font-bold" placeholder="Qual local? (ex: Garagem)" value="${escapeHtml(entry.area)}" oninput="setLimpezaCampo(${i}, 'area', this.value)">`
+                    : `<p class="text-sm sm:text-[15px] font-bold text-slate-700 leading-snug"><span class="text-slate-400">${i + 1}.</span> ${escapeHtml(entry.area)}</p>
+                       ${entry.prioridade ? `<span class="inline-block mt-1 px-1.5 py-px rounded-md border text-[9px] font-black uppercase tracking-wider ${LIMPEZA_PRIORIDADES[entry.prioridade].cls}">Prioridade ${entry.prioridade.toLowerCase()}</span>` : ''}`;
+                // Confirmação em texto do que foi marcado, logo abaixo do nome.
+                const statusMsg = feito
+                    ? '<p class="mt-1 text-xs font-black text-emerald-600">✓ A limpeza foi feita</p>'
+                    : naoFeito
+                        ? '<p class="mt-1 text-xs font-black text-red-600">✗ A limpeza não foi feita</p>'
+                        : '';
+                // "Local" só aparece depois de responder, pra lista não ficar enorme no
+                // celular. Local extra não precisa: o próprio nome já é o local.
+                const detalhes = (entry.status && !entry.extra) ? `
+                    <label class="block mt-3">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Local (opcional)</span>
+                        <input type="text" class="${inputClass}" placeholder="Ex: banheiro masculino" value="${escapeHtml(entry.local)}" oninput="setLimpezaCampo(${i}, 'local', this.value)">
+                    </label>` : '';
+                // ✗ exige o motivo (obrigatório no salvar), inclusive em local extra.
+                const motivo = naoFeito ? `
+                    <label class="block mt-3">
+                        <span class="text-[10px] font-bold text-red-500 uppercase tracking-wider">Motivo — por que não foi feita?</span>
+                        <textarea rows="2" class="limpeza-motivo ${inputClass} resize-none" data-index="${i}" placeholder="Ex: faltou produto de limpeza" oninput="setLimpezaCampo(${i}, 'motivo', this.value)">${escapeHtml(entry.motivo)}</textarea>
+                    </label>` : '';
+                return `
+                <div class="rounded-2xl border ${cardBorder} shadow-sm p-3 sm:p-4 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 shrink-0 rounded-xl ${iconBox} flex items-center justify-center">
+                            <i data-lucide="${entry.icon}" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">${titulo}${statusMsg}</div>
+                        <div class="flex gap-2 shrink-0">
+                            <button type="button" ${loading ? 'disabled' : ''} onclick="setLimpezaResposta(${i}, 'Não feito')" aria-label="Não feito" aria-pressed="${naoFeito}"
+                                class="w-12 h-12 sm:w-11 sm:h-11 rounded-xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 ${naoFeito ? 'bg-red-500 border-red-500 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500'}">
+                                <i data-lucide="x" class="w-6 h-6" stroke-width="3"></i>
+                            </button>
+                            <button type="button" ${loading ? 'disabled' : ''} onclick="setLimpezaResposta(${i}, 'Feito')" aria-label="Feito" aria-pressed="${feito}"
+                                class="w-12 h-12 sm:w-11 sm:h-11 rounded-xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 ${feito ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-500'}">
+                                <i data-lucide="check" class="w-6 h-6" stroke-width="3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    ${detalhes}
+                    ${motivo}
+                </div>`;
+            }).join('');
+
+            container.innerHTML = cards + (loading ? '' : `
+                <button type="button" onclick="addLimpezaExtra()" class="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 hover:border-brand-400 hover:text-brand-600 text-sm font-black transition-colors">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar outro local
+                </button>`);
+            lucide.createIcons();
+        }
+
+        async function saveLimpeza() {
+            const dateVal = document.getElementById('limpezaDate').value;
+            if (!dateVal) return;
+
+            // Local extra totalmente vazio (sem nome e sem resposta) é ignorado.
+            const extras = limpezaEntries.filter(entry => entry.extra && (entry.area.trim() || entry.status));
+            if (extras.some(entry => !entry.area.trim())) {
+                showMessageModal('Falta o local', 'Escreva o nome do local extra que você adicionou.', 'info');
+                return;
+            }
+            if (extras.some(entry => !entry.status)) {
+                showMessageModal('Falta a resposta', 'Marque ✓ ou ✗ no local extra que você adicionou.', 'info');
+                return;
+            }
+            const semMotivo = limpezaEntries.findIndex(entry => entry.status === 'Não feito' && !entry.motivo.trim());
+            if (semMotivo >= 0) {
+                const area = limpezaEntries[semMotivo].area.trim() || 'local extra';
+                showMessageModal('Falta o motivo', `Explique por que a limpeza não foi feita em "${area}".`, 'info');
+                const campo = document.querySelector(`#limpezaChecklist .limpeza-motivo[data-index="${semMotivo}"]`);
+                if (campo) campo.focus();
+                return;
+            }
+
+            const quemFez = document.getElementById('limpezaQuemFez').value.trim();
+            const registros = limpezaEntries
+                .filter(entry => entry.status && entry.area.trim())
+                .map(entry => ({
+                    area: entry.area.trim(), status: entry.status, local: entry.local.trim(), quemFez,
+                    motivo: entry.status === 'Não feito' ? entry.motivo.trim() : ''
+                }));
+            if (!registros.length) {
+                showMessageModal('Nada pra salvar', 'Marque ✓ ou ✗ em pelo menos uma área antes de salvar.', 'info');
+                return;
+            }
+            if (!quemFez) {
+                showMessageModal('Falta quem fez', 'Informe no topo quem fez a limpeza antes de salvar.', 'info');
+                document.getElementById('limpezaQuemFez').focus();
+                return;
+            }
+
+            const [y, m, d] = dateVal.split('-');
+            const btn = document.getElementById('limpezaSaveBtn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Salvando...';
+            lucide.createIcons();
+
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoY-LEtBw_Dxt7trr3y8RIAYoZwaEcm7hEMptI__Xz4qLVOKd0-CkQawQzpOel_mkG/exec";
+            try {
+                await fetchWithTimeout(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'saveLimpeza',
+                        data: `${d}/${m}/${y}`,
+                        semana: getISOWeekNumber(new Date(parseInt(y), parseInt(m) - 1, parseInt(d))),
+                        registros
+                    })
+                });
+                // O dia salvo vira o cache dele, pra reabrir essa data já ver o que foi gravado.
+                getLimpezaCache()[`${d}/${m}/${y}`] = registros.map(r => ({
+                    area: r.area, status: r.status, localDetalhe: r.local, motivo: r.motivo, quemFez: r.quemFez
+                }));
+                persistLimpezaCache();
+                limpezaDirty = false;
+                const faltando = limpezaEntries.filter(entry => !entry.extra && !entry.status).length;
+                showMessageModal('Salvo', faltando ? `Limpeza salva. ${faltando} área(s) ficaram sem resposta.` : 'Limpeza salva com sucesso.', 'success');
+            } catch (err) {
+                console.error('Erro ao salvar limpeza:', err);
+                showMessageModal('Erro', 'Não foi possível salvar. Verifique a conexão e tente de novo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }
+        }
+
+        // Imagem do checklist pra mandar no grupo do WhatsApp — usa o que está na
+        // tela agora (não precisa ter salvo antes) e o mesmo popup Compartilhar/
+        // Baixar das outras imagens. Mais estreita (720px) que a do Encerramento,
+        // já que é uma lista simples e vai ser vista no celular.
+        function buildLimpezaExportHtml({ dateDisplay, dateShort, weekNumber, quemFez, entries }) {
+            const feitas = entries.filter(e => e.status === 'Feito').length;
+            const naoFeitas = entries.filter(e => e.status === 'Não feito').length;
+            const semResposta = entries.length - feitas - naoFeitas;
+
+            const statCards = [
+                { emoji: '✅', bg: '#dcfce7', color: '#16a34a', value: feitas, label: 'Feitas', sublabel: percentOfTotalLabel(feitas, entries.length) },
+                { emoji: '❌', bg: '#fee2e2', color: '#dc2626', value: naoFeitas, label: 'Não feitas', sublabel: percentOfTotalLabel(naoFeitas, entries.length) }
+            ];
+            if (semResposta) {
+                statCards.push({ emoji: '➖', bg: '#f1f5f9', color: '#475569', value: semResposta, label: 'Sem resposta', sublabel: percentOfTotalLabel(semResposta, entries.length) });
+            }
+
+            const rowsHtml = entries.map(e => {
+                const badge = e.status === 'Feito'
+                    ? { text: '✓ Feito', bg: '#dcfce7', color: '#15803d', border: '#86efac' }
+                    : e.status === 'Não feito'
+                        ? { text: '✗ Não feito', bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' }
+                        : { text: 'Sem resposta', bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' };
+                return `
+                <tr style="border-bottom:1px solid #eef2f6;">
+                    <td style="padding:14px 18px;vertical-align:middle;">
+                        <div style="font-size:14px;font-weight:900;color:#1e293b;line-height:1.3;">${escapeHtml(e.area)}</div>
+                        ${e.prioridade ? `<span style="display:inline-block;margin-top:5px;margin-right:4px;padding:2px 9px;border-radius:999px;background:${LIMPEZA_PRIORIDADES[e.prioridade].bg};color:${LIMPEZA_PRIORIDADES[e.prioridade].color};border:1px solid ${LIMPEZA_PRIORIDADES[e.prioridade].border};font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;">Prioridade ${escapeHtml(e.prioridade)}</span>` : ''}
+                        ${e.local ? `<span style="display:inline-block;margin-top:5px;padding:2px 9px;border-radius:999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;">${escapeHtml(e.local)}</span>` : ''}
+                        ${e.motivo ? `<div style="margin-top:6px;font-size:12px;font-weight:600;color:#b91c1c;line-height:1.35;">Motivo: ${escapeHtml(e.motivo)}</div>` : ''}
+                    </td>
+                    <td style="padding:14px 18px;vertical-align:middle;text-align:center;">
+                        <span style="display:inline-block;padding:6px 14px;border-radius:999px;border:1px solid ${badge.border};font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;background:${badge.bg};color:${badge.color};">${badge.text}</span>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <div style="background:#f0f2f5;padding:24px;display:flex;flex-direction:column;gap:16px;width:720px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+
+                <!-- Cabeçalho -->
+                <div style="background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:20px 24px;">
+                    <h1 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:0.12em;line-height:1.2;">🧹 Checklist de Limpeza</h1>
+                    <h2 style="margin:0;font-size:13px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(dateDisplay)} • Sem. ${weekNumber}</h2>
+                    ${quemFez ? `<p style="margin:8px 0 0;font-size:11px;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.06em;">👤 Quem fez: ${escapeHtml(quemFez)}</p>` : ''}
+                </div>
+
+                <!-- Cards de estatística -->
+                ${renderStatCardsExport(statCards)}
+
+                <!-- Tabela -->
+                <div style="background:#fff;border-radius:16px;border:1px solid #cbd5e1;overflow:hidden;">
+                    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                        <colgroup><col style="width:65%"><col style="width:35%"></colgroup>
+                        <thead>
+                            <tr style="background:#fef3c7;border-bottom:2px solid #fcd34d;">
+                                <th style="padding:14px 18px;font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:0.1em;text-align:left;">Área</th>
+                                <th style="padding:14px 18px;font-size:10px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:0.1em;text-align:center;">Limpeza</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+
+                <!-- Rodapé -->
+                <div style="background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:10px 16px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;">SPG SEDE</div>
+            </div>`;
+        }
+
+        async function exportLimpezaImage() {
+            const dateVal = document.getElementById('limpezaDate').value;
+            if (!dateVal) return;
+            // Locais extras sem nome não têm o que mostrar na imagem.
+            const entries = limpezaEntries
+                .filter(entry => entry.area.trim())
+                .map(entry => ({
+                    area: entry.area.trim(), status: entry.status, local: entry.local.trim(),
+                    motivo: entry.status === 'Não feito' ? entry.motivo.trim() : '',
+                    prioridade: entry.prioridade || ''
+                }));
+            if (!entries.some(entry => entry.status)) {
+                showMessageModal('Nada pra mostrar', 'Marque ✓ ou ✗ em pelo menos uma área antes de gerar a imagem.', 'info');
+                return;
+            }
+
+            const [y, m, d] = dateVal.split('-');
+            const dateObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+            const weekdayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+            const dateShort = `${d}/${m}/${y}`;
+            const dateDisplay = `${weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1)}, ${dateShort}`;
+            const weekNumber = getISOWeekNumber(dateObj);
+            const quemFez = document.getElementById('limpezaQuemFez').value.trim();
+
+            showLoadingOverlay('Gerando imagem da limpeza, aguarde...');
+            const stage = document.createElement('div');
+            stage.style.cssText = 'position:absolute;left:-10000px;top:0;pointer-events:none;overflow:visible;';
+            stage.innerHTML = buildLimpezaExportHtml({ dateDisplay, dateShort, weekNumber, quemFez, entries });
+            document.body.appendChild(stage);
+
+            const filename = `Limpeza_${dateVal.replace(/-/g, '')}.png`;
+            try {
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const stageRect = stage.firstElementChild.getBoundingClientRect();
+                const safeRatio = getSafeExportPixelRatio(stageRect.width, stageRect.height, 3);
+                const dataUrl = await htmlToImage.toPng(stage.firstElementChild, { pixelRatio: safeRatio, backgroundColor: '#f0f2f5', cacheBust: true });
+                const blob = await (await fetch(dataUrl)).blob();
+                const file = new File([blob], filename, { type: 'image/png' });
+                openShareImageModal({ file, blob, filename, shareText: `Limpeza - ${dateShort}` });
+            } catch (err) {
+                console.error(err);
+                showMessageModal('Erro', 'Falha ao gerar a imagem.', 'error');
+            } finally {
+                document.body.removeChild(stage);
+                hideLoadingOverlay();
             }
         }
 
